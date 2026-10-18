@@ -30,6 +30,9 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set.")
 
+# Shared password of the local demo users, used only by the seed_demo command.
+DEMO_USER_PASSWORD = env("DEMO_USER_PASSWORD", "")
+
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "http://localhost:5173")
 
@@ -38,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "rest_framework",
+    "accounts",
 ]
 
 MIDDLEWARE = [
@@ -103,4 +107,10 @@ if not DEBUG:
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["accounts.authentication.SessionAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "EXCEPTION_HANDLER": "config.exceptions.exception_handler",
+    "DEFAULT_THROTTLE_RATES": {"login": "5/min"},
+    # Throttle by the TCP peer only; never trust a client-supplied X-Forwarded-For.
+    "NUM_PROXIES": 0,
 }
