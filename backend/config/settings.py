@@ -92,7 +92,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
 # With DEBUG off the app assumes it is served over HTTPS (ADR 0004).
-# includeSubDomains assumes the deploy controls every subdomain of its host.
+# includeSubDomains assumes any deployment controls every subdomain of its host.
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True

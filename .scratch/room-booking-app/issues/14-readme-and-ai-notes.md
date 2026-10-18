@@ -18,6 +18,7 @@
   - Which tests were written and why.
   - The CSRF-through-proxy check, from ticket 04.
   - The three brief/ADR differences flagged in the spec, and the assumptions it lists.
+  - That `DEBUG=False` requires HTTPS (ADR 0004), and why HSTS preload and the proxy SSL header are off.
   - What I'd improve with more time.
 - [ ] **`AI_NOTES.md`:**
   - the tools used and for which parts;

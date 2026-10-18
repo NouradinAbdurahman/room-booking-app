@@ -22,11 +22,15 @@ The browser only ever talks to one origin, `http://localhost:5173`. The Vite dev
 - Cookie and host settings:
   - `SESSION_COOKIE_HTTPONLY=True`.
   - `SameSite=Lax` on both the session and CSRF cookies.
-  - `Secure` cookies and HSTS when `DEBUG` is off.
+  - `Secure` cookies, HSTS and the HTTPS redirect when `DEBUG` is off (see below).
   - `CSRF_TRUSTED_ORIGINS=['http://localhost:5173']`.
   - `ALLOWED_HOSTS` comes from the environment.
 - Production-safe settings come from environment variables, with `DEBUG` off by default. No secrets are in the repo, apart from clearly marked demo values in `.env.example`.
-- **`DEBUG=False` requires HTTPS in front of the app.** With `DEBUG` off, the app redirects HTTP to HTTPS, sends HSTS with `includeSubDomains`, and marks the session and CSRF cookies `Secure`. Over plain HTTP it will not work, and it is not meant to; local development runs with `DEBUG=True`. Deployment is out of scope, so this is the expected setup for a deployment, not a description of one that exists. `includeSubDomains` assumes such a deployment controls every subdomain of its host. HSTS preload is deliberately left off, because it is hard to reverse and needs a real domain. `SECURE_PROXY_SSL_HEADER` is left unset, because it is only safe once a known HTTPS proxy is confirmed to strip client-supplied `X-Forwarded-Proto` headers.
+- **`DEBUG=False` requires the app to be served over HTTPS.** Local development runs with `DEBUG=True`. Deployment is out of scope, so this describes what a deployment would need, not one that exists.
+  - With `DEBUG` off: the HTTP→HTTPS redirect is on, the session and CSRF cookies are `Secure`, and HSTS is one year with `includeSubDomains`. Over plain HTTP, including direct API checks on port `8000`, every request is redirected.
+  - `includeSubDomains` assumes the deployment controls every subdomain of its host.
+  - HSTS preload stays off (Django deploy check W021), because it is hard to reverse and needs a real domain.
+  - `SECURE_PROXY_SSL_HEADER` stays unset. It is only safe once a known HTTPS proxy is confirmed to strip client-supplied `X-Forwarded-Proto`. Until it is set, Django must see HTTPS directly; behind a TLS-terminating proxy, the redirect would loop.
 - Docker Compose publishes only the frontend (`5173`) and backend (`8000`, for direct API checks) ports. PostgreSQL is reachable only inside the Compose network and is never published to the host.
 - To verify during implementation:
   - An end-to-end test of the CSRF bootstrap → login → authenticated `POST` flow.
