@@ -24,6 +24,10 @@ describe("formatting an instant in Doha time", () => {
     expect(formatDohaDate(LATE_EVENING_UTC)).toBe("19 Oct 2026");
   });
 
+  it("uses three-letter month names on every engine (no ICU \"Sept\")", () => {
+    expect(formatDohaDate("2026-09-05T09:00:00Z")).toBe("5 Sep 2026");
+  });
+
   it("shows the 24-hour Doha clock time", () => {
     expect(formatDohaTime(LATE_EVENING_UTC)).toBe("00:30");
     expect(formatDohaTime("2026-10-18T10:15:00+03:00")).toBe("10:15");
@@ -52,6 +56,16 @@ describe("building an API time from a picked Doha date and time", () => {
     );
   });
 
+  it.each([
+    ["2026-02-30", "10:00"],
+    ["2026-13-01", "10:00"],
+    ["2026-10-18", "24:00"],
+    ["2026-10-18", "10:60"],
+    ["18/10/2026", "10:00"],
+  ])("refuses an impossible date or time (%s %s)", (date, time) => {
+    expect(() => toDohaIso(date, time)).toThrow(/Invalid/);
+  });
+
   it("handles midnight at the start of a Doha day", () => {
     expect(new Date(toDohaIso("2026-10-19", "00:00")).toISOString()).toBe(
       "2026-10-18T21:00:00.000Z",
@@ -78,11 +92,11 @@ describe("stepping between dates", () => {
 
 describe("duration between two picked times", () => {
   it("counts minutes", () => {
-    expect(durationMinutes(toDohaIso("2026-10-18", "10:00"), toDohaIso("2026-10-18", "11:30"))).toBe(90);
+    expect(durationMinutes("2026-10-18T10:00:00+03:00", "2026-10-18T11:30:00+03:00")).toBe(90);
   });
 
   it("counts across midnight", () => {
-    expect(durationMinutes(toDohaIso("2026-10-18", "22:00"), toDohaIso("2026-10-19", "01:00"))).toBe(180);
+    expect(durationMinutes("2026-10-18T22:00:00+03:00", "2026-10-19T01:00:00+03:00")).toBe(180);
   });
 });
 
@@ -92,7 +106,7 @@ describe("clipping a Booking to the Day being shown", () => {
   it("cuts a Booking that crosses midnight at the end of its first Day", () => {
     const clipped = clipToDay(lateNight, "2026-10-18");
 
-    expect(formatDohaTime(clipped.start)).toBe("22:00");
+    expect(clipped.start.toISOString()).toBe("2026-10-18T19:00:00.000Z"); // 22:00 Doha
     expect(clipped.end.toISOString()).toBe("2026-10-18T21:00:00.000Z"); // Doha midnight
     expect(clipped.startsBeforeDay).toBe(false);
     expect(clipped.endsAfterDay).toBe(true);
@@ -101,8 +115,8 @@ describe("clipping a Booking to the Day being shown", () => {
   it("starts the same Booking at midnight on its second Day", () => {
     const clipped = clipToDay(lateNight, "2026-10-19");
 
-    expect(clipped.start.toISOString()).toBe("2026-10-18T21:00:00.000Z");
-    expect(formatDohaTime(clipped.end)).toBe("01:00");
+    expect(clipped.start.toISOString()).toBe("2026-10-18T21:00:00.000Z"); // Doha midnight
+    expect(clipped.end.toISOString()).toBe("2026-10-18T22:00:00.000Z"); // 01:00 Doha
     expect(clipped.startsBeforeDay).toBe(true);
     expect(clipped.endsAfterDay).toBe(false);
   });
@@ -113,7 +127,10 @@ describe("clipping a Booking to the Day being shown", () => {
       "2026-10-18",
     );
 
-    expect([formatDohaTime(clipped.start), formatDohaTime(clipped.end)]).toEqual(["09:00", "10:00"]);
+    expect([clipped.start.toISOString(), clipped.end.toISOString()]).toEqual([
+      "2026-10-18T06:00:00.000Z",
+      "2026-10-18T07:00:00.000Z",
+    ]);
     expect([clipped.startsBeforeDay, clipped.endsAfterDay]).toEqual([false, false]);
   });
 });

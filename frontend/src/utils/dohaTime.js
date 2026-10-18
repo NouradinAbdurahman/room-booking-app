@@ -4,49 +4,45 @@
 
 export const DOHA_TIME_ZONE = "Asia/Qatar";
 
-const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-  timeZone: DOHA_TIME_ZONE,
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
+// Month labels are fixed here rather than taken from Intl, because some ICU
+// versions print "Sept" where the design (and older engines) say "Sep".
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const dohaFieldsFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: DOHA_TIME_ZONE,
-  hour: "2-digit",
-  minute: "2-digit",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
   hourCycle: "h23",
 });
-
-const isoDateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: DOHA_TIME_ZONE,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-/** "19 Oct 2026": the Doha calendar date of an instant (Date or ISO string). */
-export function formatDohaDate(instant) {
-  return dateFormatter.format(new Date(instant));
-}
-
-/** "00:30": the 24-hour Doha clock time of an instant. */
-export function formatDohaTime(instant) {
-  return timeFormatter.format(new Date(instant));
-}
-
-/** "2026-10-19": today's date in Doha. */
-export function todayInDoha(now = new Date()) {
-  return isoDateFormatter.format(now);
-}
 
 const offsetFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: DOHA_TIME_ZONE,
   timeZoneName: "longOffset",
 });
 
-const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
-const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
+/** "19 Oct 2026": the Doha calendar date of an instant (Date or ISO string). */
+export function formatDohaDate(instant) {
+  const { year, month, day } = dohaFields(instant);
+  return `${day} ${MONTHS[month - 1]} ${year}`;
+}
+
+/** "00:30": the 24-hour Doha clock time of an instant. */
+export function formatDohaTime(instant) {
+  const { hour, minute } = dohaFields(instant);
+  return `${pad(hour)}:${pad(minute)}`;
+}
+
+/** "2026-10-19": today's date in Doha. */
+export function todayInDoha(now = new Date()) {
+  const { year, month, day } = dohaFields(now);
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
 
 /**
  * "2026-10-18T10:00:00+03:00": the instant a User means by a Doha date
@@ -54,15 +50,15 @@ const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
  * zone's own offset, never through the browser's local timezone.
  */
 export function toDohaIso(date, time) {
-  const [, year, month, day] = match(DATE_PATTERN, date, "date");
+  const { year, month, day } = parseDate(date);
   const [, hour, minute] = match(TIME_PATTERN, time, "time");
 
   // Read the wall-clock fields as if they were UTC, then shift by Doha's
   // offset. A second lookup at the shifted instant keeps this correct even
   // if the zone ever changes offset (Qatar has no daylight saving today).
-  const wallClockAsUtc = Date.UTC(+year, +month - 1, +day, +hour, +minute);
-  const guess = offsetMinutes(new Date(wallClockAsUtc));
-  const offset = offsetMinutes(new Date(wallClockAsUtc - guess * 60_000));
+  const wallClockAsUtc = Date.UTC(year, month - 1, day, +hour, +minute);
+  const approxOffset = offsetMinutes(new Date(wallClockAsUtc));
+  const offset = offsetMinutes(new Date(wallClockAsUtc - approxOffset * 60_000));
 
   return `${date}T${time}:00${formatOffset(offset)}`;
 }
@@ -77,13 +73,56 @@ export function dohaDayBounds(date) {
 
 /** Calendar arithmetic on "YYYY-MM-DD" strings, free of any timezone. */
 export function addDays(date, days) {
-  const [, year, month, day] = match(DATE_PATTERN, date, "date");
-  return new Date(Date.UTC(+year, +month - 1, +day + days)).toISOString().slice(0, 10);
+  const { year, month, day } = parseDate(date);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/** Whole minutes between two instants (Date or ISO string). */
+export function durationMinutes(start, end) {
+  return Math.round((new Date(end) - new Date(start)) / 60_000);
+}
+
+/**
+ * The part of a Booking's Slot that falls on a Doha Day, for drawing it on
+ * that Day's schedule. The real times are untouched; the flags say whether
+ * the Slot continues from the previous Day or into the next one. Assumes the
+ * Slot overlaps the Day, which the API's Day filter guarantees.
+ */
+export function clipToDay(slot, date) {
+  const day = dohaDayBounds(date);
+  const start = new Date(slot.start);
+  const end = new Date(slot.end);
+
+  return {
+    start: start < day.start ? day.start : start,
+    end: end > day.end ? day.end : end,
+    startsBeforeDay: start < day.start,
+    endsAfterDay: end > day.end,
+  };
+}
+
+function dohaFields(instant) {
+  const fields = {};
+  for (const { type, value } of dohaFieldsFormatter.formatToParts(new Date(instant))) {
+    if (type !== "literal") fields[type] = Number(value);
+  }
+  return fields;
+}
+
+function parseDate(date) {
+  const [, year, month, day] = match(DATE_PATTERN, date, "date").map(Number);
+  // Reject dates like 2026-02-30 that Date.UTC would silently roll over.
+  const roundTrip = new Date(Date.UTC(year, month - 1, day));
+  if (roundTrip.getUTCMonth() !== month - 1 || roundTrip.getUTCDate() !== day) {
+    throw new Error(`Invalid date: ${date}`);
+  }
+  return { year, month, day };
 }
 
 function offsetMinutes(instant) {
   const name = offsetFormatter.formatToParts(instant).find((p) => p.type === "timeZoneName").value;
   const parsed = /^GMT(?:([+-])(\d{2}):(\d{2}))?$/.exec(name);
+  if (!parsed) throw new Error(`Unexpected ${DOHA_TIME_ZONE} offset: ${name}`);
   if (!parsed[1]) return 0;
   const minutes = Number(parsed[2]) * 60 + Number(parsed[3]);
   return parsed[1] === "-" ? -minutes : minutes;
@@ -103,27 +142,4 @@ function match(pattern, value, label) {
   const result = pattern.exec(value);
   if (!result) throw new Error(`Invalid ${label}: ${value}`);
   return result;
-}
-
-/** Whole minutes between two instants (Date or ISO string). */
-export function durationMinutes(start, end) {
-  return Math.round((new Date(end) - new Date(start)) / 60_000);
-}
-
-/**
- * The part of a Booking that falls on a Doha Day, for drawing it on that
- * Day's schedule. The Booking's real times are untouched; the flags say
- * whether it continues from the previous Day or into the next one.
- */
-export function clipToDay({ start, end }, date) {
-  const day = dohaDayBounds(date);
-  const bookingStart = new Date(start);
-  const bookingEnd = new Date(end);
-
-  return {
-    start: bookingStart < day.start ? day.start : bookingStart,
-    end: bookingEnd > day.end ? day.end : bookingEnd,
-    startsBeforeDay: bookingStart < day.start,
-    endsAfterDay: bookingEnd > day.end,
-  };
 }
