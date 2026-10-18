@@ -116,3 +116,25 @@ def test_logout_ends_the_session(api_client, user):
 
     assert response.status_code == 204
     assert api_client.get("/api/auth/me/").status_code == 401
+
+
+def attempts_from(api_client, forwarded_for, count):
+    """Failed logins arriving via the Vite proxy, which appends the browser's address."""
+    token = csrf_token(api_client)
+    return [
+        login(api_client, token, password="wrong", HTTP_X_FORWARDED_FOR=forwarded_for).status_code
+        for _ in range(count)
+    ]
+
+
+def test_each_client_behind_the_proxy_has_its_own_login_limit(api_client, user):
+    assert attempts_from(api_client, "203.0.113.1", 6)[-1] == 429
+
+    assert attempts_from(api_client, "203.0.113.2", 1) == [400]
+
+
+def test_spoofed_address_in_front_of_the_proxy_entry_does_not_dodge_the_limit(api_client, user):
+    attempts_from(api_client, "203.0.113.1", 5)
+
+    # A client can prepend anything; the proxy's own (last) entry is what counts.
+    assert attempts_from(api_client, "198.51.100.9, 203.0.113.1", 1) == [429]

@@ -111,6 +111,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "EXCEPTION_HANDLER": "config.exceptions.exception_handler",
     "DEFAULT_THROTTLE_RATES": {"login": "5/min"},
-    # Throttle by the TCP peer only; never trust a client-supplied X-Forwarded-For.
-    "NUM_PROXIES": 0,
+    # Exactly one trusted proxy hop: the Vite dev server appends the browser's
+    # address to X-Forwarded-For, and DRF keys the login throttle on that last
+    # entry, so each browser gets its own limit. Direct calls to port 8000 could
+    # forge the header to dodge the limit (ADR 0004).
+    "NUM_PROXIES": 1,
 }

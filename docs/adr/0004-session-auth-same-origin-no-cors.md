@@ -18,7 +18,9 @@ The browser only ever talks to one origin, `http://localhost:5173`. The Vite dev
 ## Consequences
 
 - Every endpoint except the CSRF bootstrap and login requires a logged-in user. Anonymous requests get `401`. The user is always taken from the session on the server, never from a request parameter.
-- The login endpoint gets DRF's scoped throttle to slow down password guessing.
+- The login endpoint gets DRF's scoped throttle (5 attempts per minute per client) to slow down password guessing.
+  - Behind the Vite proxy every request arrives from one address, so the proxy adds `X-Forwarded-For` and DRF trusts exactly one hop (`NUM_PROXIES=1`), keying on the address the proxy appended. Through the app, each browser gets its own limit, and an address a client prepends is ignored.
+  - Trade-off, chosen deliberately: a client calling the directly published port `8000` could forge the header to dodge the limit. Trusting no header would make every user share one limit instead.
 - Cookie and host settings:
   - `SESSION_COOKIE_HTTPONLY=True`.
   - `SameSite=Lax` on both the session and CSRF cookies.

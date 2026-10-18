@@ -8,7 +8,7 @@ def csrf_token(client):
     return client.cookies["csrftoken"].value
 
 
-def login(client, token, username="alice", password=PASSWORD):
+def login(client, token, username="alice", password=PASSWORD, **extra):
     """POST credentials to login; pass token=None to send no CSRF header."""
     headers = {} if token is None else {"HTTP_X_CSRFTOKEN": token}
     return client.post(
@@ -16,4 +16,5 @@ def login(client, token, username="alice", password=PASSWORD):
         {"username": username, "password": password},
         format="json",
         **headers,
+        **extra,
     )
