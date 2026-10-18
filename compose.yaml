@@ -17,9 +17,6 @@ services:
   backend:
     build: ./backend
     env_file: .env
-    environment:
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
     volumes:
       - ./backend:/app
     ports:
