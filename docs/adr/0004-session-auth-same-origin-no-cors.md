@@ -26,6 +26,7 @@ The browser only ever talks to one origin, `http://localhost:5173`. The Vite dev
   - `CSRF_TRUSTED_ORIGINS=['http://localhost:5173']`.
   - `ALLOWED_HOSTS` comes from the environment.
 - Production-safe settings come from environment variables, with `DEBUG` off by default. No secrets are in the repo, apart from clearly marked demo values in `.env.example`.
+- **`DEBUG=False` requires HTTPS in front of the app.** With `DEBUG` off, the app redirects HTTP to HTTPS, sends HSTS with `includeSubDomains`, and marks the session and CSRF cookies `Secure`. Over plain HTTP it will not work, and it is not meant to; local development runs with `DEBUG=True`. Deployment is out of scope, so this is the expected setup for a deployment, not a description of one that exists. `includeSubDomains` assumes such a deployment controls every subdomain of its host. HSTS preload is deliberately left off, because it is hard to reverse and needs a real domain. `SECURE_PROXY_SSL_HEADER` is left unset, because it is only safe once a known HTTPS proxy is confirmed to strip client-supplied `X-Forwarded-Proto` headers.
 - Docker Compose publishes only the frontend (`5173`) and backend (`8000`, for direct API checks) ports. PostgreSQL is reachable only inside the Compose network and is never published to the host.
 - To verify during implementation:
   - An end-to-end test of the CSRF bootstrap → login → authenticated `POST` flow.
