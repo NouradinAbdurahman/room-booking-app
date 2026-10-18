@@ -107,7 +107,7 @@ if not DEBUG:
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
-    "DEFAULT_AUTHENTICATION_CLASSES": ["accounts.authentication.SessionAuthentication"],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["accounts.authentication.ApiSessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "EXCEPTION_HANDLER": "config.exceptions.exception_handler",
     "DEFAULT_THROTTLE_RATES": {"login": "5/min"},

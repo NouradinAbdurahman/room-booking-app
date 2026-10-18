@@ -1,7 +1,8 @@
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 
+from accounts.management.commands.seed_demo import DEMO_USERNAMES
 from tests.helpers import csrf_token, login
 
 pytestmark = pytest.mark.django_db
@@ -14,25 +15,25 @@ def _demo_password(settings):
     settings.DEMO_USER_PASSWORD = DEMO_PASSWORD
 
 
-@pytest.mark.parametrize("username", ["user1", "user2", "user3"])
-def test_seeded_demo_users_can_log_in(client, username):
+@pytest.mark.parametrize("username", DEMO_USERNAMES)
+def test_seeded_demo_users_can_log_in(api_client, username):
     call_command("seed_demo")
 
-    assert login(client, csrf_token(client), username, DEMO_PASSWORD).status_code == 200
+    assert login(api_client, csrf_token(api_client), username, DEMO_PASSWORD).status_code == 200
 
 
-def test_seeding_twice_is_idempotent_and_stores_only_hashes(client):
+def test_seeding_twice_is_idempotent_and_stores_only_hashes(api_client):
     call_command("seed_demo")
     call_command("seed_demo")
 
-    users = get_user_model().objects.filter(username__in=["user1", "user2", "user3"])
-    assert users.count() == 3
-    assert all(DEMO_PASSWORD not in u.password for u in users)
-    assert login(client, csrf_token(client), "user1", DEMO_PASSWORD).status_code == 200
+    # "Passwords are stored hashed" is not observable over HTTP, so check storage directly.
+    stored = get_user_model().objects.filter(username__in=DEMO_USERNAMES).values_list("password", flat=True)
+    assert stored and all(DEMO_PASSWORD not in p for p in stored)
+    assert login(api_client, csrf_token(api_client), "user1", DEMO_PASSWORD).status_code == 200
 
 
 def test_seeding_without_a_demo_password_fails_loudly(settings):
     settings.DEMO_USER_PASSWORD = ""
 
-    with pytest.raises(Exception, match="DEMO_USER_PASSWORD"):
+    with pytest.raises(CommandError, match="DEMO_USER_PASSWORD"):
         call_command("seed_demo")

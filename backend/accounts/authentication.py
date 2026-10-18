@@ -6,7 +6,19 @@ class CsrfFailed(exceptions.PermissionDenied):
     default_code = "csrf_failed"
 
 
-class SessionAuthentication(authentication.SessionAuthentication):
+def enforce_csrf(request):
+    """Run Django's CSRF check on a DRF request, raising CsrfFailed on failure.
+
+    Used for every authenticated session request and, explicitly, for login:
+    DRF skips CSRF for anonymous requests and every DRF view is csrf_exempt.
+    """
+    try:
+        authentication.SessionAuthentication().enforce_csrf(request)
+    except exceptions.PermissionDenied as exc:
+        raise CsrfFailed() from exc
+
+
+class ApiSessionAuthentication(authentication.SessionAuthentication):
     """DRF session authentication with two fixes (ADR 0004, spec §3).
 
     - Logged-out requests get 401, not 403: DRF only answers 401 when the
@@ -20,7 +32,4 @@ class SessionAuthentication(authentication.SessionAuthentication):
         return "Session"
 
     def enforce_csrf(self, request):
-        try:
-            super().enforce_csrf(request)
-        except exceptions.PermissionDenied as exc:
-            raise CsrfFailed() from exc
+        enforce_csrf(request)

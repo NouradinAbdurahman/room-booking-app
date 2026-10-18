@@ -15,7 +15,7 @@ def _clear_throttle_cache():
 
 
 @pytest.fixture
-def client():
+def api_client():
     """An API client that enforces CSRF exactly like a browser session would."""
     return APIClient(enforce_csrf_checks=True)
 

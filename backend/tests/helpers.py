@@ -9,9 +9,11 @@ def csrf_token(client):
 
 
 def login(client, token, username="alice", password=PASSWORD):
+    """POST credentials to login; pass token=None to send no CSRF header."""
+    headers = {} if token is None else {"HTTP_X_CSRFTOKEN": token}
     return client.post(
         "/api/auth/login/",
         {"username": username, "password": password},
         format="json",
-        HTTP_X_CSRFTOKEN=token,
+        **headers,
     )
