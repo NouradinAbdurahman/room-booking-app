@@ -1,5 +1,7 @@
 import pytest
 
+from bookings.models import Booking
+from rooms.models import Room
 from tests.helpers import PASSWORD, csrf_token, login
 
 pytestmark = pytest.mark.django_db
@@ -7,7 +9,31 @@ pytestmark = pytest.mark.django_db
 PROTECTED_ENDPOINTS = [
     ("get", "/api/auth/me/"),
     ("post", "/api/auth/logout/"),
+    ("get", "/api/rooms/"),
+    ("get", "/api/bookings/?room=1&date=2030-01-15"),
+    ("post", "/api/bookings/"),
 ]
+
+
+@pytest.fixture
+def room(db):
+    return Room.objects.create(name="Conference Room A", capacity=10)
+
+
+def book(client, room, token=None):
+    """The authenticated unsafe request used by the CSRF tests (spec T-AUTH-2/3/5)."""
+    headers = {} if token is None else {"HTTP_X_CSRFTOKEN": token}
+    return client.post(
+        "/api/bookings/",
+        {
+            "room_id": room.id,
+            "title": "Sync",
+            "start_time": "2030-01-15T10:00:00+03:00",
+            "end_time": "2030-01-15T11:00:00+03:00",
+        },
+        format="json",
+        **headers,
+    )
 
 
 @pytest.mark.parametrize(("method", "url"), PROTECTED_ENDPOINTS)
@@ -21,7 +47,7 @@ def test_logged_out_request_gets_401_with_envelope_and_session_challenge(api_cli
     assert response.json()["error"]["fields"] == {}
 
 
-def test_bootstrap_login_rotates_token_and_new_token_authorises_unsafe_request(api_client, user):
+def test_bootstrap_login_rotates_token_and_new_token_authorises_unsafe_request(api_client, user, room):
     bootstrap_token = csrf_token(api_client)
 
     response = login(api_client, bootstrap_token)
@@ -32,20 +58,19 @@ def test_bootstrap_login_rotates_token_and_new_token_authorises_unsafe_request(a
     assert rotated_token != bootstrap_token
     assert api_client.get("/api/auth/me/").json() == {"id": user.id, "username": "alice"}
 
-    # Until booking endpoints exist (ticket 08), logout is the authenticated unsafe request.
-    response = api_client.post("/api/auth/logout/", HTTP_X_CSRFTOKEN=rotated_token)
-    assert response.status_code == 204
+    assert book(api_client, room, rotated_token).status_code == 201
 
 
-def test_stale_pre_login_token_is_refused_after_login(api_client, user):
+def test_stale_pre_login_token_is_refused_after_login(api_client, user, room):
     bootstrap_token = csrf_token(api_client)
     assert login(api_client, bootstrap_token).status_code == 200
 
-    response = api_client.post("/api/auth/logout/", HTTP_X_CSRFTOKEN=bootstrap_token)
+    response = book(api_client, room, bootstrap_token)
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "csrf_failed"
-    assert api_client.get("/api/auth/me/").status_code == 200, "refused request must change nothing"
+    assert not Booking.objects.exists(), "refused request must create no Booking"
+    assert api_client.get("/api/auth/me/").status_code == 200
 
 
 @pytest.mark.parametrize("token", [None, "wrong-token-wrong-token-wrong-token-wrong-token-wro"])
@@ -61,14 +86,17 @@ def test_login_without_valid_csrf_token_is_refused_even_with_correct_credentials
     assert api_client.get("/api/auth/me/").status_code == 401, "no session may be created"
 
 
-def test_authenticated_unsafe_request_without_token_is_refused(api_client, user):
+def test_authenticated_unsafe_request_without_token_is_refused(api_client, user, room):
     assert login(api_client, csrf_token(api_client)).status_code == 200
 
-    response = api_client.post("/api/auth/logout/")
+    booking = book(api_client, room)
+    logout = api_client.post("/api/auth/logout/")
 
-    assert response.status_code == 403
-    assert response.json()["error"]["code"] == "csrf_failed"
-    assert api_client.get("/api/auth/me/").status_code == 200, "refused request must change nothing"
+    for response in (booking, logout):
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "csrf_failed"
+    assert not Booking.objects.exists(), "refused request must create no Booking"
+    assert api_client.get("/api/auth/me/").status_code == 200, "refused logout must keep the session"
 
 
 @pytest.mark.parametrize(
