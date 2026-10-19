@@ -1,0 +1,319 @@
+/* Design tokens from the approved reference (docs/design/8- Frontend Design.png):
+   a dark navy sidebar, a light grey and white content area, bright-blue primary
+   actions, pastel booking blocks, and green/red banners. Defined once here. */
+:root {
+  --navy-900: #0f1b33;
+  --navy-800: #16264a;
+  --navy-700: #1f3461;
+  --navy-text: #c9d3e8;
+
+  --page-bg: #f3f5f9;
+  --surface: #ffffff;
+  --border: #e3e7ef;
+  --input-bg: #f7f8fb;
+
+  --text: #0f172a;
+  --text-muted: #64748b;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #e8efff;
+
+  --success: #15803d;
+  --success-bg: #ecfdf3;
+  --success-border: #bbf7d0;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+
+  --booking-blue: #dbeafe;
+  --booking-green: #dcfce7;
+  --booking-purple: #ede9fe;
+
+  --radius: 10px;
+  --radius-small: 8px;
+  --shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 4px 16px rgb(15 23 42 / 0.05);
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--page-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--page-bg);
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.muted {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ---- Brand mark ---------------------------------------------------------- */
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.brand-mark--small {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ---- Buttons and inputs -------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-small);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button--primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.button--primary:hover {
+  background: var(--primary-hover);
+}
+
+.button:disabled {
+  opacity: 0.65;
+  cursor: progress;
+}
+
+.button--block {
+  width: 100%;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--input-bg);
+  font: inherit;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.field input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+  background: var(--surface);
+}
+
+.input-with-action {
+  position: relative;
+  display: block;
+}
+
+.input-with-action input {
+  padding-right: 44px;
+}
+
+.icon-button {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: var(--text);
+}
+
+/* ---- Banners ------------------------------------------------------------- */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid;
+  border-radius: var(--radius-small);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.banner svg {
+  flex: none;
+}
+
+.banner--error {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+
+.banner--success {
+  color: var(--success);
+  background: var(--success-bg);
+  border-color: var(--success-border);
+}
+
+/* ---- Login --------------------------------------------------------------- */
+
+.login-page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.login-card {
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+  width: 100%;
+  max-width: 400px;
+  padding: 36px 32px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.login-card h1 {
+  margin-top: -4px;
+}
+
+.login-card .muted {
+  margin-top: -12px;
+}
+
+.login-card .field,
+.login-card .button,
+.login-card .banner {
+  width: 100%;
+}
+
+/* ---- App shell ----------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px 14px;
+  background: var(--navy-900);
+  color: var(--navy-text);
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.sidebar__nav {
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--navy-text);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sidebar__link:hover {
+  background: var(--navy-800);
+  color: #fff;
+}
+
+.sidebar__link.active {
+  background: var(--navy-700);
+  color: #fff;
+}
+
+.sidebar__user {
+  margin-top: auto;
+  padding: 10px 12px;
+  border-top: 1px solid var(--navy-800);
+  font-size: 0.85rem;
+}
+
+.content {
+  min-width: 0;
+  padding: 32px 36px;
+}
+
+.page-header {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--text-muted);
+}

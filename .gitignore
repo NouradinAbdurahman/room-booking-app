@@ -11,6 +11,9 @@ __pycache__/
 node_modules/
 dist/
 
+# Browser-automation output (screenshots, snapshots)
+.playwright-mcp/
+
 # OS / editors
 .DS_Store
 .idea/
