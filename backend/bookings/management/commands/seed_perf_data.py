@@ -19,6 +19,7 @@ from rooms.models import Room
 
 ROOM_PREFIX = "Perf Room "
 USER_PREFIX = "perf_user_"
+PERF_TITLE = "Perf"
 QUARTER = timedelta(minutes=15)
 
 
@@ -75,9 +76,11 @@ class Command(BaseCommand):
                         cursor = datetime.combine(cursor.date() + timedelta(days=1), time(7), tzinfo=zone)
             Booking.objects.bulk_create(batch, batch_size=5000)
 
-        # Fresh planner statistics, as autovacuum would eventually provide.
+        # Fresh planner statistics for every table touched, as autovacuum would
+        # eventually provide. Without the rooms and users tables, the planner
+        # once believed there were 3 Rooms and picked a poor merge-join plan.
         with connection.cursor() as cursor:
-            cursor.execute("ANALYZE bookings_booking")
+            cursor.execute("ANALYZE rooms_room, auth_user, bookings_booking")
 
         active = sum(1 for b in batch if b.status == BookingStatus.ACTIVE)
         crossing = sum(1 for b in batch if timezone.localdate(b.start_time) != timezone.localdate(b.end_time))
@@ -86,10 +89,9 @@ class Command(BaseCommand):
             f"({active} active, {len(batch) - active} cancelled, {crossing} crossing midnight)."
         )
 
-
     def _delete_perf_data(self):
         """Only rows this command created: its prefixed Rooms and Users and their Bookings."""
-        bookings, _ = Booking.objects.filter(room__name__startswith=ROOM_PREFIX).delete()
+        bookings, _ = Booking.objects.filter(room__name__startswith=ROOM_PREFIX, title=PERF_TITLE).delete()
         rooms, _ = Room.objects.filter(name__startswith=ROOM_PREFIX).delete()
         users, _ = get_user_model().objects.filter(username__startswith=USER_PREFIX).delete()
         self.stdout.write(f"Deleted perf data: {bookings} bookings, {rooms} rooms, {users} user rows.")
@@ -99,7 +101,7 @@ def _booking(room, user, start, end, cancelled, now):
     return Booking(
         room=room,
         user=user,
-        title="Perf",
+        title=PERF_TITLE,
         start_time=start,
         end_time=end,
         status=BookingStatus.CANCELLED if cancelled else BookingStatus.ACTIVE,

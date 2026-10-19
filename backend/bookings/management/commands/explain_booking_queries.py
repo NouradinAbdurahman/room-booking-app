@@ -5,19 +5,23 @@ API runs them (bookings.queries), for the performance evidence (ticket 13).
     python manage.py explain_booking_queries
     python manage.py explain_booking_queries --without-index booking_room_start_active_idx
 
---without-index drops one index inside a transaction that is always rolled
-back, so the comparison never changes the database.
+--without-index drops one index of the bookings table inside a transaction
+that is always rolled back, so the comparison never changes the database.
+While it runs it holds an ACCESS EXCLUSIVE lock on bookings_booking, which
+blocks the running app's requests to that table: use it on a development
+database only.
 """
 
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 from django.db.models import Count, Q
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
+from psycopg import sql
 
 from bookings import queries
 from bookings.doha_time import doha_day_bounds
@@ -49,9 +53,7 @@ class Command(BaseCommand):
         try:
             with transaction.atomic():
                 if without_index:
-                    with connection.cursor() as cursor:
-                        cursor.execute(f'DROP INDEX "{without_index}"')  # name from the developer's own CLI
-                    self.stdout.write(f"(index {without_index} dropped for this run; rolled back afterwards)")
+                    self._drop_index_for_this_run(without_index)
                 self._explain("Day schedule: page", queries.day_schedule(room, date)[:PAGE_SIZE])
                 self._explain_count("Day schedule: count", queries.day_schedule(room, date))
                 self._explain("My Bookings: page", queries.upcoming_bookings(user, now)[:PAGE_SIZE])
@@ -62,14 +64,33 @@ class Command(BaseCommand):
 
         self._query_counts(room, date, user)
 
+    def _drop_index_for_this_run(self, name):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM pg_indexes WHERE tablename = 'bookings_booking' AND indexname = %s", [name]
+            )
+            if cursor.fetchone() is None:
+                raise CommandError(f"{name!r} is not an index of bookings_booking.")
+            # An exclusion constraint's index is dropped with its constraint, not on its own.
+            cursor.execute(
+                "SELECT 1 FROM pg_constraint WHERE conname = %s AND conrelid = 'bookings_booking'::regclass", [name]
+            )
+            if cursor.fetchone():
+                cursor.execute(sql.SQL("ALTER TABLE bookings_booking DROP CONSTRAINT {}").format(sql.Identifier(name)))
+            else:
+                cursor.execute(sql.SQL("DROP INDEX {}").format(sql.Identifier(name)))
+        self.stdout.write(f"(index {name} dropped for this run; rolled back afterwards)")
+
     def _explain(self, label, queryset):
         self.stdout.write(f"\n=== {label}\n{queryset.explain(analyze=True, buffers=True)}")
 
     def _explain_count(self, label, queryset):
-        # The paginator's COUNT(*), as Django builds it for this queryset.
-        sql, params = queryset.order_by().values("pk").query.sql_with_params()
+        # The exact COUNT query the paginator sends, captured from .count().
+        with CaptureQueriesContext(connection) as ctx:
+            queryset.count()
+        count_sql = ctx.captured_queries[-1]["sql"]
         with connection.cursor() as cursor:
-            cursor.execute(f"EXPLAIN (ANALYZE, BUFFERS) SELECT COUNT(*) FROM ({sql}) AS page", params)
+            cursor.execute("EXPLAIN (ANALYZE, BUFFERS) " + count_sql)
             plan = "\n".join(row[0] for row in cursor.fetchall())
         self.stdout.write(f"\n=== {label}\n{plan}")
 

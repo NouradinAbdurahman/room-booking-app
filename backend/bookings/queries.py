@@ -19,7 +19,7 @@ def day_schedule(room, date):
     """Every Active booking overlapping one Doha Day for a Room, in start order."""
     day_start, day_end = doha_day_bounds(date)
     # Overlap, not "starts on": a Booking crossing midnight shows on both Days.
-    return _listed(
+    return _active_in_start_order(
         Booking.objects.filter(
             room=room,
             start_time__gt=day_start - MAX_DURATION,
@@ -31,10 +31,10 @@ def day_schedule(room, date):
 
 def upcoming_bookings(user, now):
     """A User's Upcoming bookings: Active and not yet ended, in start order."""
-    return _listed(Booking.objects.filter(user=user, start_time__gt=now - MAX_DURATION, end_time__gt=now))
+    return _active_in_start_order(Booking.objects.filter(user=user, start_time__gt=now - MAX_DURATION, end_time__gt=now))
 
 
-def _listed(bookings):
+def _active_in_start_order(bookings):
     return (
         bookings.filter(status=BookingStatus.ACTIVE)
         .select_related("room", "user")  # no query per row
