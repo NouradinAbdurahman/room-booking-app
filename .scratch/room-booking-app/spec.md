@@ -176,7 +176,7 @@ Each fact is stored once: Room details live only on Room, and User details only 
 **Concurrency:**
 - The insert runs in a transaction.
 - If the exclusion constraint is violated, the error is caught. It counts as a Conflict **only** if SQLSTATE is `23P01` **and** the constraint name is `no_overlapping_active_bookings`. The service then re-reads the conflicting Active booking, if any, to build the message, and raises a Conflict, which becomes `409`.
-- Every other database error propagates unchanged.
+- Every other database error propagates unchanged, with one exception: a deadlock (SQLSTATE `40P01`) on the insert itself is retried a few times. The retry then gets the real outcome: `409` via the rule above, or `201`. A deadlock is never itself reported as a Conflict (ADR 0001).
 - There is no application-level locking.
 - The friendly pre-check before the insert exists only so the common case gets a good message.
 
