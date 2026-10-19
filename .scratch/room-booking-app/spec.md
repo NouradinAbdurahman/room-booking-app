@@ -574,7 +574,7 @@ Each criterion is met when the referenced tests pass or the referenced evidence 
 
 ### Remaining ambiguity
 
-- Whether the Day btree index adds anything beyond the GiST index will be decided by `EXPLAIN ANALYZE` during implementation. Either way, the README records the outcome.
+- Whether the Day btree index adds anything beyond the GiST index will be decided by `EXPLAIN ANALYZE` during implementation. Either way, the README records the outcome. **Resolved in ticket 13: it does, and it is kept (ADR 0006).**
 
 ### Context on the page size
 
