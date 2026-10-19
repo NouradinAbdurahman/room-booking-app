@@ -56,7 +56,7 @@ The frontend shows `message` to the user as the refusal reason (brief, rule 9).
 - Indexes match the two booking queries. This was confirmed with `EXPLAIN ANALYZE` (ticket 13; evidence in `.scratch/room-booking-app/evidence/13-performance.md`):
   - The Day query is served by the btree on `(room_id, start_time)` for active bookings, and My Bookings by `(user_id, start_time)`. Both are kept; without either, the query falls back to a full table scan.
   - The exclusion constraint's GiST index enforces the no-overlap rule but does not serve these queries. They filter the plain columns, while the GiST index is built on the range expression. A range-overlap rewrite that reaches the GiST index was measured and was slower.
-  - Both queries add `start_time > window start − 4 hours`. This is exact, because the database caps a Booking at 4 hours. It lets the btrees read only rows that can match, so their cost does not grow with history.
+  - Both queries add `start_time > window start − 4 hours`. This is exact, because the database caps a Booking at 4 hours. It lets the btree scans skip older history instead of reading and discarding it; their cost still depends on how many bookings match and on the plan PostgreSQL chooses.
 - To verify during implementation:
   - A test for each endpoint confirms its error responses use this envelope and status codes.
   - Pagination is checked against seeded data with more than 100 bookings overlapping one Day, including bookings that cross midnight.

@@ -28,7 +28,7 @@ The words used throughout (Booking, Booker, Slot, Day, Doha time…) are defined
 Requires Docker with Compose v2.
 
 ```sh
-git clone <repository-url> room-booking-app   # the URL of this repository
+git clone https://github.com/NouradinAbdurahman/room-booking-app.git
 cd room-booking-app
 cp .env.example .env
 docker compose up --build
@@ -282,7 +282,7 @@ docker compose exec backend python manage.py seed_perf_data --delete            
 **Finding: an exact lower bound.**
 - The first queries read a Room's or User's whole history through the index.
 - Both now add `start_time > window start − 4 hours`. This changes no result, because the database guarantees no booking lasts over 4 hours.
-- The index now reads only rows that can match, so the cost does not grow with history:
+- The index scan now starts at the earliest booking that could still overlap the window. Older history is skipped instead of read and discarded. Query cost still depends on how many bookings match and on the plan PostgreSQL chooses:
 
 | Query | Index entries read, before → after (matching) | Time, before → after |
 | --- | --- | --- |

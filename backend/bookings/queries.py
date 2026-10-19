@@ -7,7 +7,8 @@ Both add a lower bound on start_time of "MAX_DURATION before" the window.
 It changes no result: the database guarantees no Booking lasts longer than
 MAX_DURATION (booking_duration_15min_to_4h), so a Booking that starts earlier
 has ended before the window opens. It lets the (room_id|user_id, start_time)
-index skip all older history, so the cost stays flat as history grows
+index skip all older history instead of reading and discarding it (cost
+still depends on how many bookings match and on the plan PostgreSQL picks)
 (evidence: .scratch/room-booking-app/evidence/13-performance.md).
 """
 

@@ -72,7 +72,7 @@ Stability check: before and after were also measured three times, each after a f
 **Correction.**
 - Commit `6916e89` claimed "Day page 9.7 ms → 0.057 ms". That "before" figure came from a run where the seed had refreshed statistics only for the bookings table. The planner then believed there were 3 Rooms and chose a poor plan.
 - With fresh statistics on every table (the seed now does this), the honest gain is the 2–20 times shown above.
-- What does not depend on statistics: the bounded queries read only the rows that can match, so their cost stays flat as history grows.
+- What does not depend on statistics: the bounded index scans skip older history instead of reading and discarding it. Their cost still depends on how many bookings match and on the plan PostgreSQL chooses.
 
 ## Finding 2: index decision (evidence, not assumption)
 
