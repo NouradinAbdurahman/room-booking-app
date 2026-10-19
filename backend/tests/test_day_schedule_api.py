@@ -153,7 +153,6 @@ def test_query_count_does_not_grow_with_the_number_of_bookings(logged_in, room):
         ({"room": "ROOM", "date": "2026-02-30"}, {"date"}),
         ({"room": "not-a-number", "date": DAY}, {"room"}),
         ({"room": "999999", "date": DAY}, {"room"}),
-        ({"mine": "true"}, {"mine"}),
         ({"mine": "true", "room": "ROOM", "date": DAY}, {"mine"}),
     ],
     ids=[
@@ -165,7 +164,6 @@ def test_query_count_does_not_grow_with_the_number_of_bookings(logged_in, room):
         "impossible-date",
         "non-numeric-room",
         "unknown-room",
-        "mine-not-yet-supported",
         "mixed-forms",
     ],
 )

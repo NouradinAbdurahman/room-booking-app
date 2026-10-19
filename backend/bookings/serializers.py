@@ -27,10 +27,14 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = ["id", "room", "title", "start_time", "end_time", "booked_by", "created_at"]
 
 
-class BookingListFilter(serializers.Serializer):
-    """The query of GET /api/bookings/: a Room and a Doha Day, given as `date` (ADR 0006).
+MINE_ONLY_TRUE = "Use mine=true to list your own upcoming bookings."
+MINE_NOT_MIXED = "Use either mine=true, or room and date, not both."
 
-    `mine=true` is the other filter form; it arrives with My Bookings (ticket 11).
+
+class BookingListFilter(serializers.Serializer):
+    """The query of GET /api/bookings/, in exactly one of two forms (ADR 0006):
+    `mine=true` (the session User's Upcoming bookings), or a Room and a Doha Day
+    given as `room` and `date`. Validated data is {"mine": True} or {"room", "date"}.
     """
 
     room = serializers.PrimaryKeyRelatedField(
@@ -54,9 +58,20 @@ class BookingListFilter(serializers.Serializer):
             raise serializers.ValidationError(DATE_INVALID)
         return value
 
+    def to_internal_value(self, data):
+        # The mine form is checked first, so mine=true&room=… reports the mixed
+        # forms rather than whatever is wrong with the room.
+        if "mine" in data:
+            if data.get("mine") != "true":
+                raise serializers.ValidationError({"mine": [MINE_ONLY_TRUE]})
+            if "room" in data or "date" in data:
+                raise serializers.ValidationError({"mine": [MINE_NOT_MIXED]})
+            return {"mine": True}
+        return super().to_internal_value(data)
+
     def validate(self, attrs):
-        if "mine" in self.initial_data:
-            raise serializers.ValidationError({"mine": ["Listing your own bookings is not available yet."]})
+        if attrs.get("mine"):
+            return attrs
         missing = {}
         if "room" not in attrs:
             missing["room"] = [DAY_FILTER_REQUIRED.format(other="date")]
