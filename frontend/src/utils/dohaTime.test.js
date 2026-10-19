@@ -7,7 +7,9 @@ import {
   durationMinutes,
   formatDohaDate,
   formatDohaTime,
+  formatDuration,
   isDohaDate,
+  nextQuarterHour,
   todayInDoha,
   toDohaIso,
 } from "./dohaTime.js";
@@ -211,5 +213,33 @@ describe("recognising a Doha calendar date", () => {
 
   it.each([null, "", "2026-02-30", "2026-1-5", "20-10-2026", "garbage"])("rejects %s", (value) => {
     expect(isDohaDate(value)).toBe(false);
+  });
+});
+
+describe("formatting a duration", () => {
+  it.each([
+    [1, "1 minute"],
+    [45, "45 minutes"],
+    [60, "1 hour"],
+    [90, "1 hour 30 minutes"],
+    [120, "2 hours"],
+    [241, "4 hours 1 minute"],
+  ])("%i minutes reads %s", (minutes, text) => {
+    expect(formatDuration(minutes)).toBe(text);
+  });
+});
+
+describe("the next quarter hour, for a new Booking's default start", () => {
+  it("rounds up to the next quarter of an hour", () => {
+    expect(nextQuarterHour(new Date("2026-10-20T06:07:30Z")).toISOString()).toBe("2026-10-20T06:15:00.000Z");
+  });
+
+  it("moves on even when already exactly on a quarter", () => {
+    expect(nextQuarterHour(new Date("2026-10-20T06:15:00Z")).toISOString()).toBe("2026-10-20T06:30:00.000Z");
+  });
+
+  it("can roll into the next Doha day", () => {
+    const start = nextQuarterHour(new Date("2026-10-20T20:55:00Z")); // 23:55 in Doha
+    expect([todayInDoha(start), formatDohaTime(start)]).toEqual(["2026-10-21", "00:00"]);
   });
 });

@@ -92,6 +92,26 @@ export function durationMinutes(start, end) {
   return Math.round((new Date(end) - new Date(start)) / 60_000);
 }
 
+const QUARTER_HOUR_MS = 15 * 60_000;
+
+/**
+ * The first quarter hour strictly after `now`. Doha's offset is a whole number
+ * of quarter hours, so rounding the instant rounds the Doha clock too.
+ */
+export function nextQuarterHour(now = new Date()) {
+  return new Date((Math.floor(now.getTime() / QUARTER_HOUR_MS) + 1) * QUARTER_HOUR_MS);
+}
+
+/** "1 hour 30 minutes": a whole-minute duration in words. */
+export function formatDuration(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const parts = [];
+  if (hours) parts.push(`${hours} ${hours === 1 ? "hour" : "hours"}`);
+  if (rest || !hours) parts.push(`${rest} ${rest === 1 ? "minute" : "minutes"}`);
+  return parts.join(" ");
+}
+
 /**
  * The part of a Booking's Slot that falls on a Doha Day, for drawing it on
  * that Day's schedule. The real times are untouched; the flags say whether
