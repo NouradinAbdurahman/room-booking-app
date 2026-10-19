@@ -7,6 +7,7 @@ import {
   durationMinutes,
   formatDohaDate,
   formatDohaTime,
+  dohaDateOf,
   formatDuration,
   isDohaDate,
   nextQuarterHour,
@@ -241,5 +242,12 @@ describe("the next quarter hour, for a new Booking's default start", () => {
   it("can roll into the next Doha day", () => {
     const start = nextQuarterHour(new Date("2026-10-20T20:55:00Z")); // 23:55 in Doha
     expect([todayInDoha(start), formatDohaTime(start)]).toEqual(["2026-10-21", "00:00"]);
+  });
+});
+
+describe("the Doha date of an instant", () => {
+  it("is the calendar date in Doha, not in UTC or the browser", () => {
+    expect(dohaDateOf("2026-10-18T21:30:00Z")).toBe("2026-10-19");
+    expect(dohaDateOf(new Date("2026-10-19T20:59:00Z"))).toBe("2026-10-19");
   });
 });

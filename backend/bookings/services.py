@@ -63,7 +63,7 @@ class NotBooker(exceptions.PermissionDenied):
 
 
 class NoActiveBooking(exceptions.NotFound):
-    default_detail = "This booking no longer exists or was already cancelled."
+    default_detail = "This booking is already cancelled or does not exist."
 
 
 def cancel_booking(*, booker, booking_id):

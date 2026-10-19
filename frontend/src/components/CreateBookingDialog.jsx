@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/index.js";
 import {
+  dohaDateOf,
   durationMinutes,
   formatDohaTime,
   formatDuration,
@@ -174,9 +175,9 @@ function defaultForm(date) {
   const end = new Date(start.getTime() + 60 * 60_000);
   return {
     title: "",
-    startDate: todayInDoha(start),
+    startDate: dohaDateOf(start),
     startTime: formatDohaTime(start),
-    endDate: todayInDoha(end),
+    endDate: dohaDateOf(end),
     endTime: formatDohaTime(end),
   };
 }

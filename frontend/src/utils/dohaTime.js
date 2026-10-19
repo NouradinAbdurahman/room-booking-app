@@ -38,10 +38,15 @@ export function formatDohaTime(instant) {
   return `${pad(hour)}:${pad(minute)}`;
 }
 
+/** "2026-10-19": the Doha calendar date of an instant (Date or ISO string). */
+export function dohaDateOf(instant) {
+  const { year, month, day } = dohaFields(instant);
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
 /** "2026-10-19": today's date in Doha. */
 export function todayInDoha(now = new Date()) {
-  const { year, month, day } = dohaFields(now);
-  return `${year}-${pad(month)}-${pad(day)}`;
+  return dohaDateOf(now);
 }
 
 /**

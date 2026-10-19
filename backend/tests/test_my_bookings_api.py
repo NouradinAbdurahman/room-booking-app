@@ -115,9 +115,9 @@ def test_page_size_above_100_is_capped(logged_in, make_booking):
 
 
 def test_query_count_does_not_grow_with_the_number_of_bookings(logged_in, make_booking, room, other_room):
-    def queries_for(count, booking_room):
+    def queries_for(count, booking_room):  # a different Room each call, so Slots never overlap
         for n in range(count):
-            start = NOW + timedelta(days=2 + (booking_room.id % 2) * 10, hours=n)
+            start = NOW + timedelta(days=2, hours=n)
             make_booking(start, start + timedelta(minutes=30), booking_room=booking_room)
         with CaptureQueriesContext(connection) as ctx:
             assert my_bookings(logged_in).status_code == 200
@@ -140,4 +140,8 @@ def test_bad_mine_filters_are_a_validation_error(logged_in, params, message):
     response = logged_in.get("/api/bookings/", params)
 
     assert response.status_code == 400
-    assert response.json()["error"]["fields"] == {"mine": [message]}
+    assert response.json()["error"] == {
+        "code": "validation_error",
+        "message": "Some fields are invalid.",
+        "fields": {"mine": [message]},
+    }

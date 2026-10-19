@@ -22,7 +22,12 @@ export default function CancelBookingButton({ booking, onCancelled, onFailed }) 
 
   if (step === "idle") {
     return (
-      <button type="button" className="button button--danger button--small" onClick={() => setStep("confirming")}>
+      <button
+        type="button"
+        className="button button--danger button--small"
+        aria-label={`Cancel ${booking.title}`}
+        onClick={() => setStep("confirming")}
+      >
         Cancel
       </button>
     );

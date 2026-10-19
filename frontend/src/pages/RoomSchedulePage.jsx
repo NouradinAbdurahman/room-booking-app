@@ -5,9 +5,10 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import CancelBookingButton from "../components/CancelBookingButton.jsx";
 import CreateBookingDialog from "../components/CreateBookingDialog.jsx";
 import DateStepper from "../components/DateStepper.jsx";
-import { AlertIcon, ArrowLeftIcon, CheckIcon, PlusIcon } from "../components/Icons.jsx";
+import { AlertIcon, ArrowLeftIcon, PlusIcon } from "../components/Icons.jsx";
+import NoticeBanner from "../components/NoticeBanner.jsx";
 import RoomSummary from "../components/RoomSummary.jsx";
-import { daySchedule, formatDohaTime, isDohaDate, todayInDoha } from "../utils/dohaTime.js";
+import { daySchedule, dohaDateOf, formatDohaTime, isDohaDate, todayInDoha } from "../utils/dohaTime.js";
 
 const BOOKING_COLOURS = ["blue", "green", "purple"];
 
@@ -67,7 +68,7 @@ export default function RoomSchedulePage() {
     setDialogOpen(false);
     setNotice({ kind: "success", text: "Booking created successfully!" });
     // Show the Day the new Booking starts on, and refresh it.
-    const startDate = todayInDoha(new Date(created.start_time));
+    const startDate = dohaDateOf(created.start_time);
     if (startDate !== date) setSearchParams({ date: startDate });
     setReloads((n) => n + 1);
   }
@@ -112,11 +113,7 @@ export default function RoomSchedulePage() {
       ) : (
         <>
           <DateStepper date={date} onChange={changeDate} />
-          {notice && (
-            <div className={`banner banner--${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>
-              {notice.kind === "error" ? <AlertIcon /> : <CheckIcon />} {notice.text}
-            </div>
-          )}
+          <NoticeBanner notice={notice} />
           {scheduleResult?.bookings ? (
             <Timeline
               items={daySchedule(scheduleResult.bookings, date)}

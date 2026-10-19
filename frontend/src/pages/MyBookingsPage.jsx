@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../api/index.js";
 import CancelBookingButton from "../components/CancelBookingButton.jsx";
-import { AlertIcon, CheckIcon } from "../components/Icons.jsx";
+import { AlertIcon } from "../components/Icons.jsx";
+import NoticeBanner from "../components/NoticeBanner.jsx";
 import PageHeader from "../components/PageHeader.jsx";
-import { formatDohaDate, formatDohaTime, todayInDoha } from "../utils/dohaTime.js";
+import { dohaDateOf, formatDohaDate, formatDohaTime } from "../utils/dohaTime.js";
 
 /** The User's own Upcoming bookings across every Room and Day (visual 8, panel 5). */
 export default function MyBookingsPage() {
@@ -22,7 +23,11 @@ export default function MyBookingsPage() {
         setBookings(list);
         setLoadError(null);
       })
-      .catch((err) => !ignore && setLoadError(err.message));
+      .catch((err) => {
+        if (ignore) return;
+        setBookings(null); // never show a stale list under the error
+        setLoadError(err.message);
+      });
     return () => {
       ignore = true;
     };
@@ -42,17 +47,17 @@ export default function MyBookingsPage() {
     <>
       <PageHeader title="My Bookings" subtitle="Manage your upcoming bookings" />
 
-      {notice && (
-        <div className={`banner banner--${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>
-          {notice.kind === "error" ? <AlertIcon /> : <CheckIcon />} {notice.text}
-        </div>
-      )}
+      <NoticeBanner notice={notice} />
       {loadError && (
         <div className="banner banner--error" role="alert">
           <AlertIcon /> {loadError}
         </div>
       )}
-      {!bookings && !loadError && <p className="muted">Loading your bookings…</p>}
+      {!bookings && !loadError && (
+        <p className="muted" role="status">
+          Loading your bookings…
+        </p>
+      )}
       {bookings?.length === 0 && (
         <p className="muted">
           You have no upcoming bookings. <Link to="/rooms">Book a room</Link>
@@ -68,8 +73,8 @@ export default function MyBookingsPage() {
                 <th scope="col">Title</th>
                 <th scope="col">Date</th>
                 <th scope="col">Time</th>
-                <th scope="col">
-                  <span className="visually-hidden">Actions</span>
+                <th scope="col" className="bookings-table__action">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -77,7 +82,7 @@ export default function MyBookingsPage() {
               {bookings.map((booking) => (
                 <tr key={booking.id}>
                   <td>
-                    <Link to={`/rooms/${booking.room.id}?date=${todayInDoha(new Date(booking.start_time))}`}>
+                    <Link to={`/rooms/${booking.room.id}?date=${dohaDateOf(booking.start_time)}`}>
                       {booking.room.name}
                     </Link>
                   </td>
@@ -101,5 +106,5 @@ export default function MyBookingsPage() {
 }
 
 function endsOnALaterDay(booking) {
-  return todayInDoha(new Date(booking.end_time)) !== todayInDoha(new Date(booking.start_time));
+  return dohaDateOf(booking.end_time) !== dohaDateOf(booking.start_time);
 }
