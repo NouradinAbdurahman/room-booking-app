@@ -4,7 +4,7 @@
 
 **Blocked by:** 09, 12, 13
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] **README sections:**
   - Quick start: copy `.env.example`, then `docker compose up --build`, then open `http://localhost:5173`.

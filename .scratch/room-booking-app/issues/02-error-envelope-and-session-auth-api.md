@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] One exception handler renders every non-2xx response as `{"error": {"code", "message", "fields"}}`, including DRF's built-in errors (auth, permission, not found, method not allowed, throttle, parse, validation).
 - [ ] The project's session authentication class (a subclass of DRF's `SessionAuthentication`) is the only authentication class, and "authenticated" is the default permission. It:

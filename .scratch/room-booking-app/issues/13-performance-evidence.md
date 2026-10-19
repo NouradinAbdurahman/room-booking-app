@@ -4,7 +4,7 @@
 
 **Blocked by:** 11
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A development-only management command seeds a large, realistic dataset: many Bookings across Rooms, Days and Users, including Bookings that cross midnight and Cancelled bookings. It is documented and never runs automatically.
 - [ ] `EXPLAIN ANALYZE` is captured on the seeded data for the Day schedule query and the My Bookings query, as the ORM actually runs them.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The module formats a UTC instant as a Doha date and time, using `Intl` with `timeZone: 'Asia/Qatar'`.
 - [ ] It builds an offset-aware ISO-8601 string (whole minutes) from a Doha date and time the User picked, without going through the browser's local timezone.

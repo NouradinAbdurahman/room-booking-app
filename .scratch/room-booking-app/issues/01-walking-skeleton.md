@@ -9,7 +9,7 @@ Both test runners work inside Compose, and the backend tests can only run agains
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The first commit contains only the existing docs (`CLAUDE.md`, `GLOSSARY.md`, `docs/`, `.scratch/`). Every later change goes in small, separate commits.
 - [ ] The repo layout follows visual 2: a backend project with a `config` module, a frontend Vite app, and root `compose.yaml`, `.env.example`, `.gitignore`.

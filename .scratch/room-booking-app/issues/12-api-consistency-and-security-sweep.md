@@ -4,7 +4,7 @@
 
 **Blocked by:** 11
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Seam 1 › Error envelope: for every endpoint, every error it can produce is checked for the envelope, status and code:
   - `400 validation_error` and `invalid_credentials`;

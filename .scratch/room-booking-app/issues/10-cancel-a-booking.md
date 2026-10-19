@@ -4,7 +4,7 @@
 
 **Blocked by:** 08
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `DELETE /api/bookings/{id}/`:
   - **Booker, Active booking:** one conditional update sets `status = cancelled`, `cancelled_at` and `updated_at`, and returns `204`. The row is not deleted.

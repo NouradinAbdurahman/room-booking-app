@@ -4,7 +4,7 @@
 
 **Blocked by:** 10
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `GET /api/bookings/?mine=true` returns paginated Active bookings of the **session** User with `end_time > now`, ordered by `start_time`. The User always comes from the session. Combining `mine` with `room` or `date` returns `400`.
 - [ ] Seam 1 tests:

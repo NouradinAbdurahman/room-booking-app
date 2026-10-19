@@ -4,7 +4,7 @@
 
 **Blocked by:** 03, 06
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `GET /api/bookings/?room=<id>&date=YYYY-MM-DD` returns paginated Active bookings with `start_time < day_end AND end_time > day_start`. The Day is computed in `Asia/Qatar`. Results are ordered by `start_time`.
 - [ ] Booking shape: `{"id", "room": {"id", "name", "capacity"}, "title", "start_time", "end_time", "booked_by": {"id", "username"}, "created_at"}`. Times are in `+03:00`.

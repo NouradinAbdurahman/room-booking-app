@@ -4,7 +4,7 @@
 
 **Blocked by:** 08
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] A transactional test on real PostgreSQL. It never uses SQLite or test-wrapping transactions that would hide the race.
 - [ ] Two threads, each with its own client and logged-in User (CSRF handled), wait at a barrier and then both `POST` the same Room and Slot.

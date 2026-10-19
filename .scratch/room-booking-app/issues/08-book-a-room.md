@@ -4,7 +4,7 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `POST /api/bookings/` takes `{"room_id", "title", "start_time", "end_time"}`, uses the session User as the Booker, and returns `201` with the Booking.
 - [ ] A booking service module owns the rules, checked in the spec's order:

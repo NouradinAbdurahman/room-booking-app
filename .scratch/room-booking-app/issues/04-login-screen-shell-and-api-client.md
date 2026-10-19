@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] **API client:**
   - Reads the `csrftoken` cookie **at send time** on every unsafe request and sends it as `X-CSRFToken`. It never caches the token.

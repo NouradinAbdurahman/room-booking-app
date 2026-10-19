@@ -4,7 +4,7 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The Room model has `name` (unique, not blank), `capacity` (positive), `created_at` and `updated_at`. The constraints are declared on the model and appear in the migration.
 - [ ] Seam 2 tests, writing straight through the ORM without validation, show that a duplicate name and a capacity of 0 or less are rejected by PostgreSQL.
