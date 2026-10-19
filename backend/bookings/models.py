@@ -9,6 +9,8 @@ from django.utils import timezone
 
 from rooms.models import Room
 
+# The no-overlap rule's name: the API maps only its violation to 409 (ADR 0001).
+OVERLAP_CONSTRAINT = "no_overlapping_active_bookings"
 MIN_DURATION = timedelta(minutes=15)
 MAX_DURATION = timedelta(hours=4)
 
@@ -58,7 +60,7 @@ class Booking(models.Model):
             # ADR 0001: no two Active bookings for a Room may overlap, even
             # when two requests arrive at the same moment.
             ExclusionConstraint(
-                name="no_overlapping_active_bookings",
+                name=OVERLAP_CONSTRAINT,
                 expressions=[
                     ("room", RangeOperators.EQUAL),
                     (TsTzRange("start_time", "end_time", RangeBoundary()), RangeOperators.OVERLAPS),

@@ -17,19 +17,10 @@ DOHA = ZoneInfo("Asia/Qatar")
 
 
 @pytest.fixture(autouse=True)
-def fixed_clock(monkeypatch):
-    monkeypatch.setattr(services, "current_time", lambda: datetime(2026, 10, 20, 8, tzinfo=DOHA))
+def fixed_clock(server_clock):
+    server_clock(datetime(2026, 10, 20, 8, tzinfo=DOHA))
 
 
-@pytest.fixture
-def room(db):
-    return Room.objects.create(name="Conference Room A", capacity=10)
-
-
-@pytest.fixture
-def logged_in(api_client, user):
-    api_client.force_authenticate(user)
-    return api_client
 
 
 def book(client, room, start="10:00", end="11:00"):
@@ -46,7 +37,7 @@ def book(client, room, start="10:00", end="11:00"):
 
 
 def test_exclusion_violation_from_the_database_itself_is_a_409(logged_in, room, monkeypatch):
-    """The race: the pre-check saw no clash, but PostgreSQL refuses the insert."""
+    """The race: the pre-check saw no Conflict, but PostgreSQL refuses the insert."""
     assert book(logged_in, room).status_code == 201
     real_check = services._overlapping_booking
     calls = []
@@ -102,3 +93,14 @@ def test_unrelated_integrity_error_propagates_and_is_not_a_409(logged_in, room, 
         book(logged_in, room)
 
     assert excinfo.value.__cause__.diag.constraint_name == "booking_title_not_blank"
+
+
+def test_conflict_whose_booking_is_gone_on_re_read_says_at_that_time(logged_in, room, monkeypatch):
+    """The other Booking was cancelled between the refusal and the re-read."""
+    assert book(logged_in, room).status_code == 201
+    monkeypatch.setattr(services, "_overlapping_booking", lambda *args: None)
+
+    response = book(logged_in, room, "10:30", "11:30")
+
+    assert response.status_code == 409
+    assert response.json()["error"]["message"] == "Conference Room A is already booked at that time."

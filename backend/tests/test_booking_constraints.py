@@ -10,7 +10,6 @@ from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
 from bookings.models import Booking
-from rooms.models import Room
 
 pytestmark = pytest.mark.django_db
 
@@ -20,16 +19,6 @@ EXCLUSION_VIOLATION = "23P01"
 
 def doha(hour, minute=0, day=20):
     return datetime(2026, 10, day, hour, minute, tzinfo=DOHA)
-
-
-@pytest.fixture
-def room(db):
-    return Room.objects.create(name="Conference Room A", capacity=10)
-
-
-@pytest.fixture
-def other_room(db):
-    return Room.objects.create(name="Focus Room", capacity=4)
 
 
 @pytest.fixture

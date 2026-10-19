@@ -6,7 +6,6 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from bookings.models import Booking
-from rooms.models import Room
 
 pytestmark = pytest.mark.django_db
 
@@ -15,24 +14,11 @@ NOW = datetime(2026, 10, 20, 8, 30, tzinfo=DOHA)  # the server clock in these te
 
 
 @pytest.fixture(autouse=True)
-def fixed_clock(monkeypatch):
-    monkeypatch.setattr("bookings.services.current_time", lambda: NOW)
+def fixed_clock(server_clock):
+    server_clock(NOW)
 
 
-@pytest.fixture
-def room(db):
-    return Room.objects.create(name="Conference Room A", capacity=10)
 
-
-@pytest.fixture
-def other_room(db):
-    return Room.objects.create(name="Focus Room", capacity=4)
-
-
-@pytest.fixture
-def logged_in(api_client, user):
-    api_client.force_authenticate(user)
-    return api_client
 
 
 def payload(room, start="2026-10-20T10:00:00+03:00", end="2026-10-20T11:00:00+03:00", title="Product Review", **overrides):
@@ -148,6 +134,8 @@ def test_start_exactly_now_is_allowed(logged_in, room):
         ({"start_time": "tomorrow"}, "start_time"),
         ({"start_time": "2026-13-01T10:00:00+03:00"}, "start_time"),
         ({"start_time": 1760943600}, "start_time"),  # not a string
+        ({"start_time": "2026-10-20T10:00:00+03:00:30"}, "start_time"),  # offset with seconds
+        ({"end_time": "2026-10-20T24:00:00+03:00"}, "end_time"),  # 24:00
         ({"title": "   "}, "title"),
         ({"title": "x" * 201}, "title"),
         ({"room_id": "abc"}, "room_id"),
@@ -160,6 +148,8 @@ def test_start_exactly_now_is_allowed(logged_in, room):
         "words",
         "impossible-month",
         "number",
+        "offset-with-seconds",
+        "24:00",
         "blank-title",
         "long-title",
         "room-not-a-number",

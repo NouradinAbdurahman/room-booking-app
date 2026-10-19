@@ -7,11 +7,6 @@ from rooms.models import Room
 pytestmark = pytest.mark.django_db
 
 
-@pytest.fixture
-def logged_in(api_client, user):
-    api_client.force_authenticate(user)
-    return api_client
-
 
 def test_logged_out_user_gets_401(api_client):
     response = api_client.get("/api/rooms/")

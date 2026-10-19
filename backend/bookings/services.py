@@ -9,9 +9,8 @@ from rest_framework import exceptions, status
 
 from rooms.models import Room
 
-from .models import MAX_DURATION, MIN_DURATION, Booking, BookingStatus
+from .models import MAX_DURATION, MIN_DURATION, OVERLAP_CONSTRAINT, Booking, BookingStatus
 
-OVERLAP_CONSTRAINT = "no_overlapping_active_bookings"
 EXCLUSION_VIOLATION = "23P01"
 
 
@@ -26,22 +25,24 @@ def current_time():
     return timezone.now()
 
 
-def create_booking(*, booker, room_id, title, start, end):
+def create_booking(*, booker, room_id, title, start_time, end_time):
     room = _existing_room(room_id)  # step 2
-    _check_times(start, end)  # steps 3-5
+    _check_times(start_time, end_time)  # steps 3-5
 
-    clash = _overlapping_booking(room, start, end)  # step 6: a friendly message only
-    if clash:
-        raise BookingConflict(_conflict_message(room, clash))
+    conflicting = _overlapping_booking(room, start_time, end_time)  # step 6: a friendly message only
+    if conflicting:
+        raise BookingConflict(_conflict_message(room, conflicting))
 
     try:  # step 7: the database decides
         with transaction.atomic():
-            return Booking.objects.create(room=room, user=booker, title=title, start_time=start, end_time=end)
+            return Booking.objects.create(
+                room=room, user=booker, title=title, start_time=start_time, end_time=end_time
+            )
     except IntegrityError as error:
         if not is_overlap_violation(error):
             raise
-        clash = _overlapping_booking(room, start, end)
-        raise BookingConflict(_conflict_message(room, clash)) from error
+        conflicting = _overlapping_booking(room, start_time, end_time)
+        raise BookingConflict(_conflict_message(room, conflicting)) from error
 
 
 def is_overlap_violation(error):
@@ -82,9 +83,9 @@ def _overlapping_booking(room, start, end):
     )
 
 
-def _conflict_message(room, clash):
-    if clash is None:  # the conflicting Booking was cancelled again in the meantime
+def _conflict_message(room, conflicting):
+    if conflicting is None:  # the conflicting Booking was cancelled again in the meantime
         return f"{room.name} is already booked at that time."
-    start = timezone.localtime(clash.start_time)
-    end = timezone.localtime(clash.end_time)
+    start = timezone.localtime(conflicting.start_time)
+    end = timezone.localtime(conflicting.end_time)
     return f"{room.name} is already booked {start:%H:%M}–{end:%H:%M}."

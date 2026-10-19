@@ -10,7 +10,6 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from bookings.models import Booking
-from rooms.models import Room
 
 pytestmark = pytest.mark.django_db
 
@@ -22,20 +21,7 @@ def doha(day, hour, minute=0):
     return datetime(2026, 10, day, hour, minute, tzinfo=DOHA)
 
 
-@pytest.fixture
-def room(db):
-    return Room.objects.create(name="Conference Room A", capacity=10)
 
-
-@pytest.fixture
-def other_room(db):
-    return Room.objects.create(name="Focus Room", capacity=4)
-
-
-@pytest.fixture
-def logged_in(api_client, user):
-    api_client.force_authenticate(user)
-    return api_client
 
 
 @pytest.fixture

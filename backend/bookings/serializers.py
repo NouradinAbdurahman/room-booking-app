@@ -89,7 +89,9 @@ class OffsetDateTimeField(serializers.Field):
             self.fail("invalid")
         if value.tzinfo is None:
             self.fail("no_offset")
-        if value.second or value.microsecond:
+        # Check the instant itself: an offset with seconds (e.g. +03:00:30)
+        # would otherwise turn a whole-minute wall clock into an odd instant.
+        if value.second or value.microsecond or value.utcoffset().total_seconds() % 60:
             self.fail("not_whole_minute")
         return value
 

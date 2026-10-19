@@ -34,14 +34,5 @@ class BookingListView(ListCreateAPIView):
         shape = CreateBookingSerializer(data=request.data)
         shape.is_valid(raise_exception=True)
         # The Booker is always the session User, never a request field.
-        booking = services.create_booking(booker=request.user, **_rule_inputs(shape.validated_data))
+        booking = services.create_booking(booker=request.user, **shape.validated_data)
         return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
-
-
-def _rule_inputs(data):
-    return {
-        "room_id": data["room_id"],
-        "title": data["title"],
-        "start": data["start_time"],
-        "end": data["end_time"],
-    }

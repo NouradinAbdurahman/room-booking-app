@@ -1,7 +1,6 @@
 import pytest
 
 from bookings.models import Booking
-from rooms.models import Room
 from tests.helpers import PASSWORD, csrf_token, login
 
 pytestmark = pytest.mark.django_db
@@ -14,10 +13,6 @@ PROTECTED_ENDPOINTS = [
     ("post", "/api/bookings/"),
 ]
 
-
-@pytest.fixture
-def room(db):
-    return Room.objects.create(name="Conference Room A", capacity=10)
 
 
 def book(client, room, token=None):
