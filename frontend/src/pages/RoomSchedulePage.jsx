@@ -27,7 +27,7 @@ export default function RoomSchedulePage() {
   // Room or Day is never drawn, and a past error never lingers.
   const [schedule, setSchedule] = useState(null);
   const [reloads, setReloads] = useState(0);
-  const [booking, setBooking] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [notice, setNotice] = useState(null);
 
   useEffect(() => {
@@ -58,10 +58,10 @@ export default function RoomSchedulePage() {
     };
   }, [roomId, date, reloads]);
 
-  const closeDialog = useCallback(() => setBooking(false), []);
+  const closeDialog = useCallback(() => setDialogOpen(false), []);
 
   function handleCreated(created) {
-    setBooking(false);
+    setDialogOpen(false);
     setNotice("Booking created successfully!");
     // Show the Day the new Booking starts on, and refresh it.
     const startDate = todayInDoha(new Date(created.start_time));
@@ -115,14 +115,14 @@ export default function RoomSchedulePage() {
             disabled={!roomResult?.room}
             onClick={() => {
               setNotice(null);
-              setBooking(true);
+              setDialogOpen(true);
             }}
           >
             <PlusIcon /> Book This Room
           </button>
         </>
       )}
-      {booking && roomResult?.room && (
+      {dialogOpen && roomResult?.room && (
         <CreateBookingDialog room={roomResult.room} date={date} onClose={closeDialog} onCreated={handleCreated} />
       )}
     </div>

@@ -26,12 +26,18 @@ export default function CreateBookingDialog({ room, date, onClose, onCreated }) 
   const [fieldErrors, setFieldErrors] = useState({});
   const titleInput = useRef(null);
 
+  // While a request is in flight the dialog stays open, so its answer is never lost.
+  const close = submitting ? () => {} : onClose;
+
   useEffect(() => {
     titleInput.current?.focus();
-    const closeOnEscape = (event) => event.key === "Escape" && onClose();
+  }, []);
+
+  useEffect(() => {
+    const closeOnEscape = (event) => event.key === "Escape" && close();
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
+  }, [close]);
 
   const times = isoTimes(form);
   const minutes = times ? durationMinutes(times.start, times.end) : null;
@@ -61,14 +67,15 @@ export default function CreateBookingDialog({ room, date, onClose, onCreated }) 
       });
       onCreated(booking);
     } catch (err) {
-      setError(err.message);
+      // The dialog has no Room field, so a refusal of the Room shows in the banner.
+      setError(err.fields?.room_id?.[0] ?? err.message);
       setFieldErrors(err.fields ?? {});
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <form
         className="dialog"
         role="dialog"
@@ -79,7 +86,7 @@ export default function CreateBookingDialog({ room, date, onClose, onCreated }) 
       >
         <header className="dialog__header">
           <h2 id="create-booking-title">Book {room.name}</h2>
-          <button type="button" className="dialog__close" aria-label="Close" onClick={onClose}>
+          <button type="button" className="dialog__close" aria-label="Close" onClick={close} disabled={submitting}>
             <XIcon />
           </button>
         </header>
@@ -121,7 +128,7 @@ export default function CreateBookingDialog({ room, date, onClose, onCreated }) 
         )}
 
         <div className="dialog__actions">
-          <button type="button" className="button button--secondary" onClick={onClose}>
+          <button type="button" className="button button--secondary" onClick={close} disabled={submitting}>
             Cancel
           </button>
           <button type="submit" className="button button--primary" disabled={submitting}>
