@@ -195,3 +195,12 @@ def test_only_plain_ascii_yyyy_mm_dd_is_accepted(logged_in, room, date):
 
     assert response.status_code == 400
     assert set(response.json()["error"]["fields"]) == {"date"}
+
+
+def test_a_maximum_length_booking_reaching_into_the_day_is_still_listed(logged_in, book, room):
+    """The Day query skips history by starting its index scan 4 hours (the
+    longest possible Booking) before the Day; a Booking at that limit must
+    still be found."""
+    book(doha(20, 20, 1), doha(21, 0, 1), title="Four hours, one minute into the 21st")
+
+    assert titles(day_schedule(logged_in, room, "2026-10-21")) == ["Four hours, one minute into the 21st"]

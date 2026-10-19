@@ -145,3 +145,11 @@ def test_bad_mine_filters_are_a_validation_error(logged_in, params, message):
         "message": "Some fields are invalid.",
         "fields": {"mine": [message]},
     }
+
+
+def test_a_maximum_length_booking_still_in_progress_is_upcoming(logged_in, make_booking):
+    """The Upcoming query skips history by starting its index scan 4 hours (the
+    longest possible Booking) before now; a Booking at that limit must still be found."""
+    make_booking(NOW - timedelta(hours=3, minutes=59), NOW + timedelta(minutes=1), title="Ends in a minute")
+
+    assert titles(my_bookings(logged_in)) == ["Ends in a minute"]
