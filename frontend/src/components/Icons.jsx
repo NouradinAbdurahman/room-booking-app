@@ -81,3 +81,27 @@ export function ChevronRightIcon(props) {
     </svg>
   );
 }
+
+export function ChevronLeftIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+export function ArrowLeftIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M19 12H5M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+export function PlusIcon(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}

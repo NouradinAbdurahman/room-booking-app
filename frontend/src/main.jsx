@@ -6,6 +6,7 @@ import RequireAuth from "./auth/RequireAuth.jsx";
 import AppShell from "./components/AppShell.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import MyBookingsPage from "./pages/MyBookingsPage.jsx";
+import RoomSchedulePage from "./pages/RoomSchedulePage.jsx";
 import RoomsPage from "./pages/RoomsPage.jsx";
 import "./styles.css";
 
@@ -18,6 +19,7 @@ createRoot(document.getElementById("root")).render(
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
               <Route path="/rooms" element={<RoomsPage />} />
+              <Route path="/rooms/:roomId" element={<RoomSchedulePage />} />
               <Route path="/my-bookings" element={<MyBookingsPage />} />
             </Route>
           </Route>
