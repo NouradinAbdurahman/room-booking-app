@@ -16,7 +16,11 @@ The workflow:
 - requirements and architecture decisions written down first (`docs/adr/`);
 - 14 reviewable tickets;
 - test-first implementation;
-- two independent reviews per ticket, one against the project's standards and one against the spec;
+- two separate AI reviews per ticket before I approved it:
+  - tickets 01–13: one against the project's standards, one against the spec;
+  - ticket 14's documents: one for accuracy, one against the brief.
+
+  The review reports are not stored in the repository; the fixes they led to appear as review-fix commits for every ticket;
 - small commits.
 
 I approved each ticket before the next one started. The workflow does not guarantee correct output; I still checked the reasoning, the tests and the database behaviour. The final responsibility for the requirements and the technical decisions is mine.
