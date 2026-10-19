@@ -3,9 +3,7 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import services
-from .doha_time import doha_day_bounds
-from .models import Booking, BookingStatus
+from . import queries, services
 from .serializers import BookingListFilter, BookingSerializer, CreateBookingSerializer
 
 
@@ -19,20 +17,10 @@ class BookingListView(ListCreateAPIView):
         query = BookingListFilter(data=self.request.query_params)
         query.is_valid(raise_exception=True)
         filters = query.validated_data
-
         if filters.get("mine"):
-            # Upcoming: Active and not yet ended. The User comes from the session only.
-            matching = {"user": self.request.user, "end_time__gt": services.current_time()}
-        else:
-            day_start, day_end = doha_day_bounds(filters["date"])
-            # Overlap, not "starts on": a Booking crossing midnight shows on both Days.
-            matching = {"room": filters["room"], "start_time__lt": day_end, "end_time__gt": day_start}
-
-        return (
-            Booking.objects.filter(status=BookingStatus.ACTIVE, **matching)
-            .select_related("room", "user")
-            .order_by("start_time", "id")
-        )
+            # The User comes from the session only.
+            return queries.upcoming_bookings(self.request.user, services.current_time())
+        return queries.day_schedule(filters["room"], filters["date"])
 
     def create(self, request, *args, **kwargs):
         shape = CreateBookingSerializer(data=request.data)
