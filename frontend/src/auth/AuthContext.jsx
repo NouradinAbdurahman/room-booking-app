@@ -36,11 +36,12 @@ export function AuthProvider({ children }) {
    * Ends the session on the server. The User is only shown as logged out once
    * the server confirms it (or says there was no session); otherwise the error
    * is thrown so the screen can say logout failed, rather than hiding a session
-   * that is still alive.
+   * that is still alive. A stale or broken CSRF cookie would otherwise make
+   * logout impossible, so on csrf_failed it fetches a fresh token and retries once.
    */
   const logout = useCallback(async () => {
     try {
-      await authApi.logout();
+      await logoutOnServer();
     } catch (error) {
       if (error.status !== 401) throw error;
     }
@@ -51,6 +52,16 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => ({ ...state, login, logout }), [state, login, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+async function logoutOnServer() {
+  try {
+    await authApi.logout();
+  } catch (error) {
+    if (error.code !== "csrf_failed") throw error;
+    await api.refreshCsrfToken();
+    await authApi.logout();
+  }
 }
 
 export function useAuth() {

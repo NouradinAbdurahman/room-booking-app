@@ -233,3 +233,14 @@ describe("network failures", () => {
     expect(error.message).toBe("Can't reach the server. Check your connection and try again.");
   });
 });
+
+describe("refreshing the CSRF token", () => {
+  it("always asks the server, even when a (possibly broken) cookie exists", async () => {
+    const { fetch, calls } = fakeFetch([200, { csrf_token: "t" }]);
+    const api = createApiClient({ fetch, getCsrfToken: () => "brokenButPresent" });
+
+    await api.refreshCsrfToken();
+
+    expect(calls.map((c) => [c.method, c.url])).toEqual([["GET", "/api/auth/csrf/"]]);
+  });
+});

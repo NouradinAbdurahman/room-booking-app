@@ -111,6 +111,11 @@ export function createApiClient({
     async ensureCsrfToken() {
       if (!getCsrfToken()) await request("GET", CSRF_BOOTSTRAP_URL);
     },
+
+    /** Ask the server for a fresh CSRF cookie, replacing a stale or broken one. */
+    async refreshCsrfToken() {
+      await request("GET", CSRF_BOOTSTRAP_URL);
+    },
   };
 }
 
