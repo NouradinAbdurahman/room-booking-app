@@ -18,6 +18,12 @@ class InvalidCredentials(exceptions.APIException):
     default_code = "invalid_credentials"
 
 
+class LoginThrottled(exceptions.Throttled):
+    default_detail = "Too many login attempts."
+    extra_detail_singular = "Try again in {wait} second."
+    extra_detail_plural = "Try again in {wait} seconds."
+
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(trim_whitespace=False)
@@ -42,6 +48,9 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "login"
+
+    def throttled(self, request, wait):
+        raise LoginThrottled(wait)
 
     # Hide this frame's locals (which hold the password) from error reports.
     @method_decorator(sensitive_variables())
