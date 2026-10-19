@@ -11,6 +11,7 @@ PROTECTED_ENDPOINTS = [
     ("get", "/api/rooms/"),
     ("get", "/api/bookings/?room=1&date=2030-01-15"),
     ("post", "/api/bookings/"),
+    ("delete", "/api/bookings/1/"),
 ]
 
 

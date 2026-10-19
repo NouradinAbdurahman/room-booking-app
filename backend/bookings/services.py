@@ -57,6 +57,33 @@ def create_booking(*, booker, room_id, title, start_time, end_time):
                 raise
 
 
+class NotBooker(exceptions.PermissionDenied):
+    default_code = "not_booker"
+    default_detail = "You can only cancel your own bookings."
+
+
+class NoActiveBooking(exceptions.NotFound):
+    default_detail = "There is no active booking with this id."
+
+
+def cancel_booking(*, booker, booking_id):
+    """Cancel one of the Booker's Active bookings (ADR 0002).
+
+    A single conditional UPDATE marks it cancelled and keeps the row, so the
+    Slot is freed and the history stays. There is no time limit: the brief's
+    only rule is that the Booker cancels.
+    """
+    now = current_time()
+    cancelled = Booking.objects.filter(
+        pk=booking_id, user=booker, status=BookingStatus.ACTIVE
+    ).update(status=BookingStatus.CANCELLED, cancelled_at=now, updated_at=now)
+    if cancelled:
+        return
+    if Booking.objects.filter(pk=booking_id, status=BookingStatus.ACTIVE).exists():
+        raise NotBooker()
+    raise NoActiveBooking()
+
+
 def is_overlap_violation(error):
     """True only for PostgreSQL's exclusion violation on the no-overlap constraint (ADR 0001)."""
     cause = error.__cause__
