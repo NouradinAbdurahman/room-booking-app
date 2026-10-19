@@ -2,7 +2,9 @@ from django.urls import include, path, re_path
 
 from config.views import api_not_found
 
-# Used when DEBUG is off; with DEBUG on, Django shows its technical page instead.
+# Used when DEBUG is off; with DEBUG on, Django shows its technical pages instead.
+handler400 = "config.views.bad_request"
+handler403 = "config.views.permission_denied"
 handler500 = "config.views.server_error"
 
 urlpatterns = [

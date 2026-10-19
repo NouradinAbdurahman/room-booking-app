@@ -12,6 +12,11 @@ VALIDATION_MESSAGE = "Some fields are invalid."
 PARSE_ERROR_MESSAGE = "The request body is not valid JSON."
 
 
+def error_body(code, message, fields=None):
+    """The one error envelope shape, shared by DRF's handler and Django's error views."""
+    return {"error": {"code": code, "message": message, "fields": fields or {}}}
+
+
 def exception_handler(exc, context):
     # DRF converts Django's own 404/403 internally but hands us the original
     # exception; convert first so their code and message come out right.
@@ -32,7 +37,7 @@ def exception_handler(exc, context):
     else:
         code, message, fields = _code(exc), _first_message(exc.detail), {}
 
-    response.data = {"error": {"code": code, "message": message, "fields": fields}}
+    response.data = error_body(code, message, fields)
     return response
 
 

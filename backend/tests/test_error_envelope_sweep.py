@@ -13,7 +13,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from bookings import services
-from tests.helpers import PASSWORD, csrf_token, login
+from tests.helpers import csrf_token, login
 
 pytestmark = pytest.mark.django_db
 
@@ -166,5 +166,16 @@ def test_500_unexpected_error_still_uses_the_envelope_and_hides_details(user, ro
 
     monkeypatch.setattr(services, "create_booking", explode)
 
-    error = assert_envelope(client.post("/api/bookings/", booking_body(room), format="json"), 500, "server_error")
-    assert "secret" not in error["message"]
+    response = client.post("/api/bookings/", booking_body(room), format="json")
+
+    assert_envelope(response, 500, "server_error")
+    assert b"secret" not in response.content
+
+
+def test_400_from_django_itself_uses_the_envelope(db):
+    """A request Django refuses before DRF runs (here a Host not in ALLOWED_HOSTS)."""
+    client = APIClient(raise_request_exception=False)
+
+    response = client.get("/api/rooms/", HTTP_HOST="evil.example")
+
+    assert_envelope(response, 400, "bad_request")
