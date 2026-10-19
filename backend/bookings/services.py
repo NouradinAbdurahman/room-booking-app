@@ -74,10 +74,11 @@ def cancel_booking(*, booker, booking_id):
     only rule is that the Booker cancels.
     """
     now = current_time()
-    cancelled = Booking.objects.filter(
+    # .update() skips auto_now, so updated_at is set here explicitly.
+    updated_rows = Booking.objects.filter(
         pk=booking_id, user=booker, status=BookingStatus.ACTIVE
     ).update(status=BookingStatus.CANCELLED, cancelled_at=now, updated_at=now)
-    if cancelled:
+    if updated_rows:
         return
     if Booking.objects.filter(pk=booking_id, status=BookingStatus.ACTIVE).exists():
         raise NotBooker()

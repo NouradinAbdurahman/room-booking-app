@@ -12,6 +12,7 @@ export default function CancelBookingButton({ booking, onCancelled, onFailed }) 
     setStep("sending");
     try {
       await api.delete(`/api/bookings/${booking.id}/`);
+      setStep("idle");
       onCancelled(booking);
     } catch (err) {
       setStep("idle");

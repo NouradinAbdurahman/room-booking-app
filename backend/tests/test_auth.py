@@ -1,9 +1,14 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import pytest
 
 from bookings.models import Booking
 from tests.helpers import PASSWORD, csrf_token, login
 
 pytestmark = pytest.mark.django_db
+
+DOHA = ZoneInfo("Asia/Qatar")
 
 PROTECTED_ENDPOINTS = [
     ("get", "/api/auth/me/"),
@@ -82,16 +87,20 @@ def test_login_without_valid_csrf_token_is_refused_even_with_correct_credentials
     assert api_client.get("/api/auth/me/").status_code == 401, "no session may be created"
 
 
-def test_authenticated_unsafe_request_without_token_is_refused(api_client, user, room):
+def test_authenticated_unsafe_request_without_token_is_refused(api_client, user, room, make_booking):
+    existing = make_booking(datetime(2030, 1, 16, 10, tzinfo=DOHA), datetime(2030, 1, 16, 11, tzinfo=DOHA))
     assert login(api_client, csrf_token(api_client)).status_code == 200
 
     booking = book(api_client, room)
+    cancel = api_client.delete(f"/api/bookings/{existing.id}/")
     logout = api_client.post("/api/auth/logout/")
 
-    for response in (booking, logout):
+    for response in (booking, cancel, logout):
         assert response.status_code == 403
         assert response.json()["error"]["code"] == "csrf_failed"
-    assert not Booking.objects.exists(), "refused request must create no Booking"
+    assert Booking.objects.count() == 1, "refused POST must create no Booking"
+    existing.refresh_from_db()
+    assert existing.status == "active", "refused DELETE must cancel nothing"
     assert api_client.get("/api/auth/me/").status_code == 200, "refused logout must keep the session"
 
 

@@ -25,16 +25,9 @@ def doha(day, hour, minute=0):
 
 
 @pytest.fixture
-def book(room, user):
-    def _book(start, end, title="Team Sync", booking_room=None, booker=None, **extra):
-        return Booking.objects.create(
-            room=booking_room or room,
-            user=booker or user,
-            title=title,
-            start_time=start,
-            end_time=end,
-            **extra,
-        )
+def book(make_booking):
+    def _book(start, end, title="Team Sync", **extra):
+        return make_booking(start, end, title=title, **extra)
 
     return _book
 

@@ -47,6 +47,19 @@ def logged_in(api_client, user):
 
 
 @pytest.fixture
+def make_booking(room, user):
+    """Write a Booking straight to the database (the room and user fixtures by default)."""
+    from bookings.models import Booking
+
+    def _make(start, end, *, booker=None, booking_room=None, title="Sync", **extra):
+        return Booking.objects.create(
+            room=booking_room or room, user=booker or user, title=title, start_time=start, end_time=end, **extra
+        )
+
+    return _make
+
+
+@pytest.fixture
 def server_clock(monkeypatch):
     """Pin the clock the booking rules trust; returns a setter for 'now'."""
 

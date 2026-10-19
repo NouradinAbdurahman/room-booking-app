@@ -165,7 +165,7 @@ function Timeline({ items, userId, onCancelled, onCancelFailed }) {
             <BookingBlock
               item={item}
               colour={BOOKING_COLOURS[bookings.indexOf(item) % BOOKING_COLOURS.length]}
-              own={item.booking.booked_by.id === userId}
+              isBooker={item.booking.booked_by.id === userId}
               onCancelled={onCancelled}
               onCancelFailed={onCancelFailed}
             />
@@ -176,7 +176,7 @@ function Timeline({ items, userId, onCancelled, onCancelFailed }) {
   );
 }
 
-function BookingBlock({ item, colour, own, onCancelled, onCancelFailed }) {
+function BookingBlock({ item, colour, isBooker, onCancelled, onCancelFailed }) {
   const { booking, startsBeforeDay, endsAfterDay } = item;
   return (
     <div className={`timeline__block timeline__block--booking timeline__block--${colour}`}>
@@ -188,7 +188,7 @@ function BookingBlock({ item, colour, own, onCancelled, onCancelFailed }) {
       </span>
       <span className="timeline__booker">{booking.booked_by.username}</span>
       {/* The Cancel action appears only on the User's own Bookings; the server enforces it anyway. */}
-      {own && (
+      {isBooker && (
         <span className="timeline__actions">
           <CancelBookingButton booking={booking} onCancelled={onCancelled} onFailed={onCancelFailed} />
         </span>
