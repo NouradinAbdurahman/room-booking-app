@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, createApiClient } from "./client.js";
+import { ApiError, createApiClient, parseCsrfCookie } from "./client.js";
 
 /** A fake fetch that records calls and replies from a queue of [status, body]. */
 function fakeFetch(...replies) {
@@ -60,7 +60,7 @@ describe("paginated lists", () => {
       [200, { count: 3, next: "/api/rooms/?page=2", previous: null, results: [{ id: 1 }, { id: 2 }] }],
       [200, { count: 3, next: null, previous: "/api/rooms/", results: [{ id: 3 }] }],
     );
-    const api = createApiClient({ fetch, getCsrfToken: () => null });
+    const api = createApiClient({ fetch, getCsrfToken: () => null, origin: "http://localhost:5173" });
 
     const rooms = await api.listAll("/api/rooms/");
 
@@ -139,5 +139,58 @@ describe("errors", () => {
 
     expect(error.status).toBe(502);
     expect(error.message).toBe("Something went wrong. Please try again.");
+  });
+});
+
+describe("pagination links", () => {
+  it("are only followed within this origin's /api/", async () => {
+    const { fetch, calls } = fakeFetch([
+      200,
+      { count: 2, next: "https://evil.example/api/rooms/?page=2", previous: null, results: [{ id: 1 }] },
+    ]);
+    const api = createApiClient({ fetch, getCsrfToken: () => null, origin: "http://localhost:5173" });
+
+    const error = await api.listAll("/api/rooms/").catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("accept an absolute same-origin link, as Django builds them", async () => {
+    const { fetch, calls } = fakeFetch(
+      [200, { next: "http://localhost:5173/api/rooms/?page=2", results: [{ id: 1 }] }],
+      [200, { next: null, results: [{ id: 2 }] }],
+    );
+    const api = createApiClient({ fetch, getCsrfToken: () => null, origin: "http://localhost:5173" });
+
+    expect(await api.listAll("/api/rooms/")).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(calls[1].url).toBe("/api/rooms/?page=2");
+  });
+
+  it("stop instead of looping when a page links back to itself", async () => {
+    const loop = [200, { next: "/api/rooms/?page=2", results: [{ id: 1 }] }];
+    const { fetch, calls } = fakeFetch(loop, loop, loop);
+    const api = createApiClient({ fetch, getCsrfToken: () => null, origin: "http://localhost:5173" });
+
+    const error = await api.listAll("/api/rooms/?page=2").catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(calls).toHaveLength(1);
+  });
+});
+
+describe("reading the CSRF cookie", () => {
+  it("finds the token among other cookies", () => {
+    expect(parseCsrfCookie("theme=dark; csrftoken=AbC123xyz; lang=en")).toBe("AbC123xyz");
+  });
+
+  it("takes the last duplicate, as Django does", () => {
+    expect(parseCsrfCookie("csrftoken=firstOne; csrftoken=secondOne")).toBe("secondOne");
+  });
+
+  it("ignores values that are not a token and never throws on malformed input", () => {
+    expect(parseCsrfCookie("csrftoken=%E0%A4%A")).toBeNull();
+    expect(parseCsrfCookie("csrftoken=<script>")).toBeNull();
+    expect(parseCsrfCookie("")).toBeNull();
   });
 });
