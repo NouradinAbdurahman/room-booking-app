@@ -686,3 +686,50 @@ fieldset.field legend {
   font-size: 0.85rem;
   font-weight: 600;
 }
+
+/* ---- My Bookings (visual 8, panel 5) ------------------------------------- */
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.bookings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.bookings-table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.bookings-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.bookings-table a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bookings-table__action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
