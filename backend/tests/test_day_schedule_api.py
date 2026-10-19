@@ -206,3 +206,15 @@ def test_unknown_room_says_so(logged_in):
     response = logged_in.get("/api/bookings/", {"room": "999999", "date": DAY})
 
     assert response.json()["error"]["fields"] == {"room": ["No Room has this id."]}
+
+
+@pytest.mark.parametrize(
+    "date",
+    ["2026-10-20\n", "\u0662\u0660\u0662\u0666-\u0661\u0660-\u0662\u0660", " 2026-10-20"],
+    ids=["trailing-newline", "arabic-indic-digits", "leading-space"],
+)
+def test_only_plain_ascii_yyyy_mm_dd_is_accepted(logged_in, room, date):
+    response = logged_in.get("/api/bookings/", {"room": room.id, "date": date})
+
+    assert response.status_code == 400
+    assert set(response.json()["error"]["fields"]) == {"date"}
