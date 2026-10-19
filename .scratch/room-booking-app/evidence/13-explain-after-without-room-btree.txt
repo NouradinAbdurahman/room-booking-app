@@ -1,0 +1,95 @@
+# AFTER, with booking_room_start_active_idx dropped for the run (rolled back)
+# docker compose exec backend python manage.py explain_booking_queries --without-index booking_room_start_active_idx
+
+Bookings: 105332 (90465 active). Day schedule: room 115 (Perf Room 11) on 2026-11-15. My Bookings: perf_user_048.
+(index booking_room_start_active_idx dropped for this run; rolled back afterwards)
+
+=== Day schedule: page
+Limit  (cost=661.36..661.36 rows=2 width=158) (actual time=0.155..0.156 rows=9 loops=1)
+  Buffers: shared hit=277
+  ->  Sort  (cost=661.36..661.36 rows=2 width=158) (actual time=0.154..0.155 rows=9 loops=1)
+        Sort Key: bookings_booking.start_time, bookings_booking.id
+        Sort Method: quicksort  Memory: 27kB
+        Buffers: shared hit=277
+        ->  Nested Loop  (cost=0.42..661.35 rows=2 width=158) (actual time=0.026..0.143 rows=9 loops=1)
+              Buffers: shared hit=274
+              ->  Seq Scan on rooms_room  (cost=0.00..1.29 rows=1 width=41) (actual time=0.002..0.003 rows=1 loops=1)
+                    Filter: (id = 115)
+                    Rows Removed by Filter: 22
+                    Buffers: shared hit=1
+              ->  Nested Loop  (cost=0.42..660.04 rows=2 width=117) (actual time=0.023..0.139 rows=9 loops=1)
+                    Buffers: shared hit=273
+                    ->  Seq Scan on auth_user  (cost=0.00..2.53 rows=53 width=45) (actual time=0.002..0.004 rows=53 loops=1)
+                          Buffers: shared hit=2
+                    ->  Index Scan using booking_user_start_active_idx on bookings_booking  (cost=0.42..12.40 rows=1 width=72) (actual time=0.002..0.002 rows=0 loops=53)
+                          Index Cond: ((user_id = auth_user.id) AND (start_time > '2026-11-14 17:00:00+00'::timestamp with time zone) AND (start_time < '2026-11-15 21:00:00+00'::timestamp with time zone))
+                          Filter: ((end_time > '2026-11-14 21:00:00+00'::timestamp with time zone) AND (room_id = 115))
+                          Rows Removed by Filter: 2
+                          Buffers: shared hit=271
+Planning:
+  Buffers: shared hit=41
+Planning Time: 0.104 ms
+Execution Time: 0.167 ms
+
+=== Day schedule: count
+Aggregate  (cost=5207.97..5207.98 rows=1 width=8) (actual time=4.164..4.164 rows=1 loops=1)
+  Buffers: shared hit=2838
+  ->  Seq Scan on bookings_booking  (cost=0.00..5207.97 rows=2 width=0) (actual time=2.288..4.163 rows=9 loops=1)
+        Filter: ((end_time > '2026-11-14 21:00:00+00'::timestamp with time zone) AND (start_time > '2026-11-14 17:00:00+00'::timestamp with time zone) AND (start_time < '2026-11-15 21:00:00+00'::timestamp with time zone) AND (room_id = 115) AND ((status)::text = 'active'::text))
+        Rows Removed by Filter: 105323
+        Buffers: shared hit=2838
+Planning Time: 0.018 ms
+Execution Time: 4.167 ms
+
+=== My Bookings: page
+Limit  (cost=7.69..721.06 rows=100 width=158) (actual time=0.052..0.109 rows=100 loops=1)
+  Buffers: shared hit=143
+  ->  Incremental Sort  (cost=7.69..3381.89 rows=473 width=158) (actual time=0.052..0.106 rows=100 loops=1)
+        Sort Key: bookings_booking.start_time, bookings_booking.id
+        Presorted Key: bookings_booking.start_time
+        Full-sort Groups: 4  Sort Method: quicksort  Average Memory: 33kB  Peak Memory: 33kB
+        Buffers: shared hit=143
+        ->  Nested Loop  (cost=0.56..3360.64 rows=473 width=158) (actual time=0.016..0.082 rows=101 loops=1)
+              Buffers: shared hit=140
+              ->  Nested Loop  (cost=0.42..3345.37 rows=473 width=117) (actual time=0.013..0.056 rows=101 loops=1)
+                    Buffers: shared hit=102
+                    ->  Index Scan using booking_user_start_active_idx on bookings_booking  (cost=0.42..3336.79 rows=473 width=72) (actual time=0.008..0.033 rows=101 loops=1)
+                          Index Cond: ((user_id = 302) AND (start_time > '2026-10-19 10:13:49.553297+00'::timestamp with time zone))
+                          Filter: (end_time > '2026-10-19 14:13:49.553297+00'::timestamp with time zone)
+                          Buffers: shared hit=100
+                    ->  Materialize  (cost=0.00..2.67 rows=1 width=45) (actual time=0.000..0.000 rows=1 loops=101)
+                          Buffers: shared hit=2
+                          ->  Seq Scan on auth_user  (cost=0.00..2.66 rows=1 width=45) (actual time=0.003..0.003 rows=1 loops=1)
+                                Filter: (id = 302)
+                                Rows Removed by Filter: 52
+                                Buffers: shared hit=2
+              ->  Memoize  (cost=0.15..0.19 rows=1 width=41) (actual time=0.000..0.000 rows=1 loops=101)
+                    Cache Key: bookings_booking.room_id
+                    Cache Mode: logical
+                    Hits: 82  Misses: 19  Evictions: 0  Overflows: 0  Memory Usage: 3kB
+                    Buffers: shared hit=38
+                    ->  Index Scan using rooms_room_pkey on rooms_room  (cost=0.14..0.18 rows=1 width=41) (actual time=0.000..0.000 rows=1 loops=19)
+                          Index Cond: (id = bookings_booking.room_id)
+                          Buffers: shared hit=38
+Planning:
+  Buffers: shared hit=15
+Planning Time: 0.086 ms
+Execution Time: 0.122 ms
+
+=== My Bookings: count
+Aggregate  (cost=2038.39..2038.40 rows=1 width=8) (actual time=0.206..0.206 rows=1 loops=1)
+  Buffers: shared hit=537
+  ->  Bitmap Heap Scan on bookings_booking  (cost=70.04..2037.20 rows=473 width=0) (actual time=0.048..0.185 rows=968 loops=1)
+        Recheck Cond: ((user_id = 302) AND (start_time > '2026-10-19 10:13:49.553297+00'::timestamp with time zone) AND ((status)::text = 'active'::text))
+        Filter: (end_time > '2026-10-19 14:13:49.553297+00'::timestamp with time zone)
+        Heap Blocks: exact=529
+        Buffers: shared hit=537
+        ->  Bitmap Index Scan on booking_user_start_active_idx  (cost=0.00..69.92 rows=950 width=0) (actual time=0.029..0.029 rows=968 loops=1)
+              Index Cond: ((user_id = 302) AND (start_time > '2026-10-19 10:13:49.553297+00'::timestamp with time zone))
+              Buffers: shared hit=8
+Planning Time: 0.014 ms
+Execution Time: 0.209 ms
+
+=== Queries per API request (no query per row)
+Day schedule: HTTP 200, 9 of 9 bookings returned in 5 queries
+My Bookings: HTTP 200, 100 of 968 bookings returned in 4 queries

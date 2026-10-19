@@ -1,0 +1,2 @@
+Deleted perf data: 105332 bookings, 20 rooms, 50 user rows.
+Created 20 rooms, 50 users, 105332 bookings (90465 active, 14867 cancelled, 6513 crossing midnight).

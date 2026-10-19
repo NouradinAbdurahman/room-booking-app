@@ -1,0 +1,104 @@
+# REJECTED alternative: Day schedule written as a GiST range overlap (tstzrange && day)
+# docker compose exec backend python manage.py explain_booking_queries 
+
+Bookings: 105332 (90465 active). Day schedule: room 115 (Perf Room 11) on 2026-11-15. My Bookings: perf_user_048.
+
+=== Day schedule: page
+Limit  (cost=2086.30..2086.41 rows=44 width=190) (actual time=0.350..0.351 rows=9 loops=1)
+  Buffers: shared hit=159
+  ->  Sort  (cost=2086.30..2086.41 rows=44 width=190) (actual time=0.350..0.350 rows=9 loops=1)
+        Sort Key: bookings_booking.start_time, bookings_booking.id
+        Sort Method: quicksort  Memory: 27kB
+        Buffers: shared hit=159
+        ->  Nested Loop  (cost=151.20..2085.10 rows=44 width=190) (actual time=0.319..0.336 rows=9 loops=1)
+              Buffers: shared hit=156
+              ->  Nested Loop  (cost=151.06..2062.43 rows=44 width=113) (actual time=0.316..0.329 rows=9 loops=1)
+                    Buffers: shared hit=138
+                    ->  Seq Scan on rooms_room  (cost=0.00..1.29 rows=1 width=41) (actual time=0.003..0.003 rows=1 loops=1)
+                          Filter: (id = 115)
+                          Rows Removed by Filter: 22
+                          Buffers: shared hit=1
+                    ->  Bitmap Heap Scan on bookings_booking  (cost=151.06..2060.70 rows=44 width=72) (actual time=0.311..0.324 rows=9 loops=1)
+                          Recheck Cond: ((tstzrange(start_time, end_time, '[)'::text) && '["2026-11-14 21:00:00+00","2026-11-15 21:00:00+00")'::tstzrange) AND ((status)::text = 'active'::text))
+                          Filter: (room_id = 115)
+                          Rows Removed by Filter: 95
+                          Heap Blocks: exact=42
+                          Buffers: shared hit=137
+                          ->  Bitmap Index Scan on no_overlapping_active_bookings  (cost=0.00..151.04 rows=902 width=0) (actual time=0.298..0.299 rows=208 loops=1)
+                                Index Cond: (tstzrange(start_time, end_time, '[)'::text) && '["2026-11-14 21:00:00+00","2026-11-15 21:00:00+00")'::tstzrange)
+                                Buffers: shared hit=95
+              ->  Index Scan using auth_user_pkey on auth_user  (cost=0.14..0.52 rows=1 width=45) (actual time=0.000..0.000 rows=1 loops=9)
+                    Index Cond: (id = bookings_booking.user_id)
+                    Buffers: shared hit=18
+Planning:
+  Buffers: shared hit=42
+Planning Time: 0.125 ms
+Execution Time: 0.573 ms
+
+=== Day schedule: count
+Aggregate  (cost=2060.81..2060.82 rows=1 width=8) (actual time=0.166..0.166 rows=1 loops=1)
+  Buffers: shared hit=137
+  ->  Bitmap Heap Scan on bookings_booking  (cost=151.06..2060.70 rows=44 width=0) (actual time=0.158..0.166 rows=9 loops=1)
+        Recheck Cond: ((tstzrange(start_time, end_time, '[)'::text) && '["2026-11-14 21:00:00+00","2026-11-15 21:00:00+00")'::tstzrange) AND ((status)::text = 'active'::text))
+        Filter: (room_id = 115)
+        Rows Removed by Filter: 95
+        Heap Blocks: exact=42
+        Buffers: shared hit=137
+        ->  Bitmap Index Scan on no_overlapping_active_bookings  (cost=0.00..151.04 rows=902 width=0) (actual time=0.152..0.152 rows=208 loops=1)
+              Index Cond: (tstzrange(start_time, end_time, '[)'::text) && '["2026-11-14 21:00:00+00","2026-11-15 21:00:00+00")'::tstzrange)
+              Buffers: shared hit=95
+Planning Time: 0.013 ms
+Execution Time: 0.170 ms
+
+=== My Bookings: page
+Limit  (cost=7.69..721.06 rows=100 width=158) (actual time=0.055..0.115 rows=100 loops=1)
+  Buffers: shared hit=143
+  ->  Incremental Sort  (cost=7.69..3381.89 rows=473 width=158) (actual time=0.054..0.112 rows=100 loops=1)
+        Sort Key: bookings_booking.start_time, bookings_booking.id
+        Presorted Key: bookings_booking.start_time
+        Full-sort Groups: 4  Sort Method: quicksort  Average Memory: 33kB  Peak Memory: 33kB
+        Buffers: shared hit=143
+        ->  Nested Loop  (cost=0.56..3360.64 rows=473 width=158) (actual time=0.016..0.087 rows=101 loops=1)
+              Buffers: shared hit=140
+              ->  Nested Loop  (cost=0.42..3345.37 rows=473 width=117) (actual time=0.012..0.059 rows=101 loops=1)
+                    Buffers: shared hit=102
+                    ->  Index Scan using booking_user_start_active_idx on bookings_booking  (cost=0.42..3336.79 rows=473 width=72) (actual time=0.007..0.037 rows=101 loops=1)
+                          Index Cond: ((user_id = 302) AND (start_time > '2026-10-19 10:13:47.872233+00'::timestamp with time zone))
+                          Filter: (end_time > '2026-10-19 14:13:47.872233+00'::timestamp with time zone)
+                          Buffers: shared hit=100
+                    ->  Materialize  (cost=0.00..2.67 rows=1 width=45) (actual time=0.000..0.000 rows=1 loops=101)
+                          Buffers: shared hit=2
+                          ->  Seq Scan on auth_user  (cost=0.00..2.66 rows=1 width=45) (actual time=0.003..0.003 rows=1 loops=1)
+                                Filter: (id = 302)
+                                Rows Removed by Filter: 52
+                                Buffers: shared hit=2
+              ->  Memoize  (cost=0.15..0.19 rows=1 width=41) (actual time=0.000..0.000 rows=1 loops=101)
+                    Cache Key: bookings_booking.room_id
+                    Cache Mode: logical
+                    Hits: 82  Misses: 19  Evictions: 0  Overflows: 0  Memory Usage: 3kB
+                    Buffers: shared hit=38
+                    ->  Index Scan using rooms_room_pkey on rooms_room  (cost=0.14..0.18 rows=1 width=41) (actual time=0.000..0.000 rows=1 loops=19)
+                          Index Cond: (id = bookings_booking.room_id)
+                          Buffers: shared hit=38
+Planning:
+  Buffers: shared hit=15
+Planning Time: 0.088 ms
+Execution Time: 0.126 ms
+
+=== My Bookings: count
+Aggregate  (cost=2038.39..2038.40 rows=1 width=8) (actual time=0.204..0.204 rows=1 loops=1)
+  Buffers: shared hit=537
+  ->  Bitmap Heap Scan on bookings_booking  (cost=70.04..2037.20 rows=473 width=0) (actual time=0.047..0.182 rows=968 loops=1)
+        Recheck Cond: ((user_id = 302) AND (start_time > '2026-10-19 10:13:47.872233+00'::timestamp with time zone) AND ((status)::text = 'active'::text))
+        Filter: (end_time > '2026-10-19 14:13:47.872233+00'::timestamp with time zone)
+        Heap Blocks: exact=529
+        Buffers: shared hit=537
+        ->  Bitmap Index Scan on booking_user_start_active_idx  (cost=0.00..69.92 rows=950 width=0) (actual time=0.027..0.027 rows=968 loops=1)
+              Index Cond: ((user_id = 302) AND (start_time > '2026-10-19 10:13:47.872233+00'::timestamp with time zone))
+              Buffers: shared hit=8
+Planning Time: 0.015 ms
+Execution Time: 0.207 ms
+
+=== Queries per API request (no query per row)
+Day schedule: HTTP 200, 9 of 9 bookings returned in 5 queries
+My Bookings: HTTP 200, 100 of 968 bookings returned in 4 queries
