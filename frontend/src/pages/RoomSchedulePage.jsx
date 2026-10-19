@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { api } from "../api/index.js";
+import { useAuth } from "../auth/AuthContext.jsx";
+import CancelBookingButton from "../components/CancelBookingButton.jsx";
 import CreateBookingDialog from "../components/CreateBookingDialog.jsx";
 import DateStepper from "../components/DateStepper.jsx";
 import { AlertIcon, ArrowLeftIcon, CheckIcon, PlusIcon } from "../components/Icons.jsx";
@@ -12,6 +14,7 @@ const BOOKING_COLOURS = ["blue", "green", "purple"];
 /** A Room's schedule for one Doha Day (visual 8, panel 3). */
 export default function RoomSchedulePage() {
   const { roomId } = useParams();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedDate = searchParams.get("date");
   const date = isDohaDate(requestedDate) ? requestedDate : todayInDoha();
@@ -62,11 +65,21 @@ export default function RoomSchedulePage() {
 
   function handleCreated(created) {
     setDialogOpen(false);
-    setNotice("Booking created successfully!");
+    setNotice({ kind: "success", text: "Booking created successfully!" });
     // Show the Day the new Booking starts on, and refresh it.
     const startDate = todayInDoha(new Date(created.start_time));
     if (startDate !== date) setSearchParams({ date: startDate });
     setReloads((n) => n + 1);
+  }
+
+  function handleCancelled() {
+    setNotice({ kind: "success", text: "Booking cancelled." });
+    setReloads((n) => n + 1);
+  }
+
+  function handleCancelFailed(err) {
+    setNotice({ kind: "error", text: err.message });
+    setReloads((n) => n + 1); // e.g. already cancelled elsewhere: show the current schedule
   }
 
   function changeDate(next) {
@@ -100,12 +113,17 @@ export default function RoomSchedulePage() {
         <>
           <DateStepper date={date} onChange={changeDate} />
           {notice && (
-            <div className="banner banner--success" role="status">
-              <CheckIcon /> {notice}
+            <div className={`banner banner--${notice.kind}`} role={notice.kind === "error" ? "alert" : "status"}>
+              {notice.kind === "error" ? <AlertIcon /> : <CheckIcon />} {notice.text}
             </div>
           )}
           {scheduleResult?.bookings ? (
-            <Timeline items={daySchedule(scheduleResult.bookings, date)} />
+            <Timeline
+              items={daySchedule(scheduleResult.bookings, date)}
+              userId={user.id}
+              onCancelled={handleCancelled}
+              onCancelFailed={handleCancelFailed}
+            />
           ) : (
             <p className="muted">Loading schedule…</p>
           )}
@@ -129,7 +147,7 @@ export default function RoomSchedulePage() {
   );
 }
 
-function Timeline({ items }) {
+function Timeline({ items, userId, onCancelled, onCancelFailed }) {
   const bookings = items.filter((item) => item.kind === "booking");
   return (
     <ol className="timeline">
@@ -144,7 +162,13 @@ function Timeline({ items }) {
           {item.kind === "available" ? (
             <div className="timeline__block timeline__block--available">Available</div>
           ) : (
-            <BookingBlock item={item} colour={BOOKING_COLOURS[bookings.indexOf(item) % BOOKING_COLOURS.length]} />
+            <BookingBlock
+              item={item}
+              colour={BOOKING_COLOURS[bookings.indexOf(item) % BOOKING_COLOURS.length]}
+              own={item.booking.booked_by.id === userId}
+              onCancelled={onCancelled}
+              onCancelFailed={onCancelFailed}
+            />
           )}
         </li>
       ))}
@@ -152,7 +176,7 @@ function Timeline({ items }) {
   );
 }
 
-function BookingBlock({ item, colour }) {
+function BookingBlock({ item, colour, own, onCancelled, onCancelFailed }) {
   const { booking, startsBeforeDay, endsAfterDay } = item;
   return (
     <div className={`timeline__block timeline__block--booking timeline__block--${colour}`}>
@@ -163,6 +187,12 @@ function BookingBlock({ item, colour }) {
         {endsAfterDay && <em> (until the next day)</em>}
       </span>
       <span className="timeline__booker">{booking.booked_by.username}</span>
+      {/* The Cancel action appears only on the User's own Bookings; the server enforces it anyway. */}
+      {own && (
+        <span className="timeline__actions">
+          <CancelBookingButton booking={booking} onCancelled={onCancelled} onFailed={onCancelFailed} />
+        </span>
+      )}
     </div>
   );
 }
