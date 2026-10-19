@@ -103,7 +103,7 @@ def test_cancelling_twice_is_a_404(logged_in, upcoming):
     assert response.status_code == 404
     assert response.json()["error"] == {
         "code": "not_found",
-        "message": "There is no active booking with this id.",
+        "message": "This booking no longer exists or was already cancelled.",
         "fields": {},
     }
     booking.refresh_from_db()
@@ -122,7 +122,7 @@ def test_unknown_booking_is_a_404(logged_in):
     assert response.status_code == 404
     assert response.json()["error"] == {
         "code": "not_found",
-        "message": "There is no active booking with this id.",
+        "message": "This booking no longer exists or was already cancelled.",
         "fields": {},
     }
 

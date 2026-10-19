@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
-from bookings.models import Booking, BookingStatus
+from bookings.models import BookingStatus
 
 pytestmark = pytest.mark.django_db
 
