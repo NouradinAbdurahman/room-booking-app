@@ -3,7 +3,7 @@ request's shape, is the serializer's job). Correctness of the no-overlap rule
 never depends on the pre-check: PostgreSQL's exclusion constraint decides,
 including when two requests arrive at the same moment (ADR 0001)."""
 
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, OperationalError, transaction
 from django.utils import timezone
 from rest_framework import exceptions, status
 
@@ -12,6 +12,12 @@ from rooms.models import Room
 from .models import MAX_DURATION, MIN_DURATION, OVERLAP_CONSTRAINT, Booking, BookingStatus
 
 EXCLUSION_VIOLATION = "23P01"
+DEADLOCK_DETECTED = "40P01"
+# Two truly simultaneous overlapping inserts can deadlock inside PostgreSQL's
+# exclusion check; PostgreSQL then aborts one of them. A deadlock is transient
+# by definition, so the insert is retried: the retry either meets the other,
+# now committed, Booking (23P01, so 409) or finds the Slot free (201).
+INSERT_ATTEMPTS = 3
 
 
 class BookingConflict(exceptions.APIException):
@@ -33,16 +39,20 @@ def create_booking(*, booker, room_id, title, start_time, end_time):
     if conflicting:
         raise BookingConflict(_conflict_message(room, conflicting))
 
-    try:  # step 7: the database decides
-        with transaction.atomic():
-            return Booking.objects.create(
-                room=room, user=booker, title=title, start_time=start_time, end_time=end_time
-            )
-    except IntegrityError as error:
-        if not is_overlap_violation(error):
-            raise
-        conflicting = _overlapping_booking(room, start_time, end_time)
-        raise BookingConflict(_conflict_message(room, conflicting)) from error
+    for attempt in range(1, INSERT_ATTEMPTS + 1):  # step 7: the database decides
+        try:
+            with transaction.atomic():
+                return Booking.objects.create(
+                    room=room, user=booker, title=title, start_time=start_time, end_time=end_time
+                )
+        except IntegrityError as error:
+            if not is_overlap_violation(error):
+                raise
+            conflicting = _overlapping_booking(room, start_time, end_time)
+            raise BookingConflict(_conflict_message(room, conflicting)) from error
+        except OperationalError as error:
+            if not _is_deadlock(error) or attempt == INSERT_ATTEMPTS:
+                raise
 
 
 def is_overlap_violation(error):
@@ -53,6 +63,10 @@ def is_overlap_violation(error):
         getattr(cause, "sqlstate", None) == EXCLUSION_VIOLATION
         and getattr(diag, "constraint_name", None) == OVERLAP_CONSTRAINT
     )
+
+
+def _is_deadlock(error):
+    return getattr(error.__cause__, "sqlstate", None) == DEADLOCK_DETECTED
 
 
 def _existing_room(room_id):

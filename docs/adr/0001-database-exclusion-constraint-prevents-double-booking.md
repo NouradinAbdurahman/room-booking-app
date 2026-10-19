@@ -27,6 +27,11 @@ The application still checks for overlap before inserting, but only to give a re
 - Start and end are stored as two plain `timestamptz` columns, `start_time` and `end_time`. The range exists only inside the constraint expression, which keeps the Django model and serializers simple.
 - The constraint is declared in the Django model with `ExclusionConstraint`, and the extension is created with a `BtreeGistExtension` migration operation that runs before it.
 - Only a PostgreSQL exclusion violation on this constraint becomes `409 Conflict`. The check is SQLSTATE `23P01` **and** the constraint name `no_overlapping_active_bookings`. Every other database error, including other integrity errors, propagates normally and is never reported as a booking conflict.
+- Two truly simultaneous overlapping inserts can **deadlock** inside PostgreSQL's exclusion check: each finds the other's uncommitted row and waits for it. PostgreSQL then aborts one with SQLSTATE `40P01`. Found by the concurrency test (ticket 09).
+  - The data is still correct: exactly one Booking remains.
+  - Unhandled, though, the losing request would get a `500` instead of a clear refusal.
+  - So the insert is retried (up to 3 attempts). The retry either meets the other, now committed, Booking (`23P01`, so `409`) or finds the Slot free (`201`).
+  - A deadlock is never itself mapped to `409`, and there is still no application-level locking.
 - To verify during implementation, on PostgreSQL 17 as pinned in Docker Compose (ADR 0007):
   - Inspect the SQL from `sqlmigrate`.
   - Check that `\d bookings_booking` shows the constraint with its `WHERE` clause.
