@@ -24,7 +24,7 @@ export default function AppShell() {
           <span className="brand-mark brand-mark--small">
             <CalendarIcon width={18} height={18} />
           </span>
-          Room Booking
+          <span className="sidebar__brand-name">Room Booking</span>
         </div>
 
         <nav className="sidebar__nav" aria-label="Main">
