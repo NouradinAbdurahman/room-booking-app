@@ -101,6 +101,28 @@ export function clipToDay(slot, date) {
   };
 }
 
+/**
+ * A Doha Day as a list to draw: each Booking (clipped to the Day) and an
+ * "available" item for every gap, from midnight to midnight. `bookings` are
+ * the API's Day schedule, already ordered by start_time; the API also
+ * guarantees each one overlaps the Day.
+ */
+export function daySchedule(bookings, date) {
+  const day = dohaDayBounds(date);
+  const items = [];
+  let cursor = day.start;
+
+  for (const booking of bookings) {
+    const clipped = clipToDay({ start: booking.start_time, end: booking.end_time }, date);
+    if (clipped.start > cursor) items.push({ kind: "available", start: cursor, end: clipped.start });
+    items.push({ kind: "booking", booking, ...clipped });
+    if (clipped.end > cursor) cursor = clipped.end;
+  }
+  if (cursor < day.end) items.push({ kind: "available", start: cursor, end: day.end });
+
+  return items;
+}
+
 function dohaFields(instant) {
   const fields = {};
   for (const { type, value } of dohaFieldsFormatter.formatToParts(new Date(instant))) {

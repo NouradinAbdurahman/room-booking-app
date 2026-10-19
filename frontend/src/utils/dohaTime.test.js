@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   clipToDay,
+  daySchedule,
   dohaDayBounds,
   durationMinutes,
   formatDohaDate,
@@ -132,5 +133,71 @@ describe("clipping a Booking to the Day being shown", () => {
       "2026-10-18T07:00:00.000Z",
     ]);
     expect([clipped.startsBeforeDay, clipped.endsAfterDay]).toEqual([false, false]);
+  });
+});
+
+describe("laying out a Day's schedule with Available gaps", () => {
+  // 20 Oct 2026 in Doha runs from 2026-10-19T21:00Z to 2026-10-20T21:00Z.
+  const booking = (start, end, title) => ({ start_time: start, end_time: end, title });
+  const shape = (items) =>
+    items.map((item) => [
+      item.kind,
+      item.start.toISOString(),
+      item.end.toISOString(),
+      item.booking?.title ?? null,
+    ]);
+
+  it("is one Available gap when the Day is empty", () => {
+    expect(shape(daySchedule([], "2026-10-20"))).toEqual([
+      ["available", "2026-10-19T21:00:00.000Z", "2026-10-20T21:00:00.000Z", null],
+    ]);
+  });
+
+  it("puts Available gaps before, between and after Bookings", () => {
+    const items = daySchedule(
+      [
+        booking("2026-10-20T09:00:00+03:00", "2026-10-20T10:00:00+03:00", "Sync"),
+        booking("2026-10-20T11:00:00+03:00", "2026-10-20T12:00:00+03:00", "Review"),
+      ],
+      "2026-10-20",
+    );
+
+    expect(shape(items)).toEqual([
+      ["available", "2026-10-19T21:00:00.000Z", "2026-10-20T06:00:00.000Z", null],
+      ["booking", "2026-10-20T06:00:00.000Z", "2026-10-20T07:00:00.000Z", "Sync"],
+      ["available", "2026-10-20T07:00:00.000Z", "2026-10-20T08:00:00.000Z", null],
+      ["booking", "2026-10-20T08:00:00.000Z", "2026-10-20T09:00:00.000Z", "Review"],
+      ["available", "2026-10-20T09:00:00.000Z", "2026-10-20T21:00:00.000Z", null],
+    ]);
+  });
+
+  it("adds no empty gap between touching Bookings", () => {
+    const items = daySchedule(
+      [
+        booking("2026-10-20T09:00:00+03:00", "2026-10-20T10:00:00+03:00", "First"),
+        booking("2026-10-20T10:00:00+03:00", "2026-10-20T11:00:00+03:00", "Second"),
+      ],
+      "2026-10-20",
+    );
+
+    expect(items.map((item) => item.kind)).toEqual(["available", "booking", "booking", "available"]);
+  });
+
+  it("clips Bookings crossing midnight to the Day and flags them", () => {
+    const items = daySchedule(
+      [
+        booking("2026-10-19T23:00:00+03:00", "2026-10-20T01:00:00+03:00", "From last night"),
+        booking("2026-10-20T23:00:00+03:00", "2026-10-21T02:00:00+03:00", "Into tomorrow"),
+      ],
+      "2026-10-20",
+    );
+
+    expect(shape(items)).toEqual([
+      ["booking", "2026-10-19T21:00:00.000Z", "2026-10-19T22:00:00.000Z", "From last night"],
+      ["available", "2026-10-19T22:00:00.000Z", "2026-10-20T20:00:00.000Z", null],
+      ["booking", "2026-10-20T20:00:00.000Z", "2026-10-20T21:00:00.000Z", "Into tomorrow"],
+    ]);
+    expect([items[0].startsBeforeDay, items[0].endsAfterDay]).toEqual([true, false]);
+    expect([items[2].startsBeforeDay, items[2].endsAfterDay]).toEqual([false, true]);
   });
 });
