@@ -3,10 +3,15 @@
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const CSRF_BOOTSTRAP_URL = "/api/auth/csrf/";
-const MAX_PAGES = 50;
+// A safety net only; revisited links are already refused, so this never limits real lists.
+const DEFAULT_MAX_PAGES = 1000;
+const NETWORK_ERROR_MESSAGE = "Can't reach the server. Check your connection and try again.";
 const TOKEN_PATTERN = /^[A-Za-z0-9]+$/;
 
-/** An API failure carrying the server's error envelope (ADR 0006). */
+/**
+ * An API failure carrying the server's error envelope (ADR 0006).
+ * `status` is the HTTP status, or 0 when no usable HTTP response arrived.
+ */
 export class ApiError extends Error {
   constructor(status, { code, message, fields } = {}) {
     super(message || "Something went wrong. Please try again.");
@@ -43,12 +48,14 @@ export function readCsrfCookie() {
  *   The token is never cached: Django rotates it on login (ADR 0004).
  * @param {() => void} [deps.onUnauthorized]  Called on any 401 so the app can go to Login.
  * @param {string} [deps.origin]  This page's origin; pagination links must stay on it.
+ * @param {number} [deps.maxPages]  Most pages listAll will read.
  */
 export function createApiClient({
   fetch,
   getCsrfToken,
   onUnauthorized = () => {},
   origin = globalThis.location?.origin,
+  maxPages = DEFAULT_MAX_PAGES,
 }) {
   async function request(method, url, body) {
     const headers = { Accept: "application/json" };
@@ -58,12 +65,17 @@ export function createApiClient({
       if (token) headers["X-CSRFToken"] = token;
     }
 
-    const response = await fetch(url, {
-      method,
-      headers,
-      credentials: "same-origin",
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    let response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers,
+        credentials: "same-origin",
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch {
+      throw new ApiError(0, { code: "network_error", message: NETWORK_ERROR_MESSAGE });
+    }
 
     const data = await readJson(response);
     if (response.ok) return data;
@@ -79,14 +91,13 @@ export function createApiClient({
 
     /**
      * Every result of a paginated list, following `next` until it is null.
-     * Links are only followed within this origin's /api/, never revisited,
-     * and at most MAX_PAGES pages are read.
+     * Links are only followed within this origin's /api/ and never revisited.
      */
     async listAll(url) {
       const results = [];
       const visited = new Set();
       for (let next = url; next; ) {
-        if (visited.has(next) || visited.size >= MAX_PAGES) throw paginationError();
+        if (visited.has(next) || visited.size >= maxPages) throw paginationError();
         visited.add(next);
         const page = await request("GET", next);
         if (!Array.isArray(page?.results)) throw paginationError();

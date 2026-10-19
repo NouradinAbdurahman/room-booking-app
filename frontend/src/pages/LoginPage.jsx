@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { AlertIcon, CalendarIcon, EyeIcon, EyeOffIcon } from "../components/Icons.jsx";
 
 export default function LoginPage() {
   const { status, login } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -14,7 +13,9 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (status === "loading") return null;
-  if (status === "authenticated") return <Navigate to="/rooms" replace />;
+  // One redirect for both cases: already logged in, or just logged in. It
+  // returns to the page (and query, e.g. ?date=) that sent the User here.
+  if (status === "authenticated") return <Navigate to={returnPath(location)} replace />;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -22,7 +23,6 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(username, password);
-      navigate(location.state?.from?.pathname ?? "/rooms", { replace: true });
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -65,7 +65,7 @@ export default function LoginPage() {
               onClick={() => setShowPassword((shown) => !shown)}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              {showPassword ? <EyeIcon /> : <EyeOffIcon />}
             </button>
           </span>
         </label>
@@ -82,4 +82,9 @@ export default function LoginPage() {
       </form>
     </div>
   );
+}
+
+function returnPath(location) {
+  const from = location.state?.from;
+  return from ? `${from.pathname}${from.search}` : "/rooms";
 }

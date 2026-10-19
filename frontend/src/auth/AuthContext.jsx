@@ -22,6 +22,7 @@ export function AuthProvider({ children }) {
     })();
     return () => {
       cancelled = true;
+      setUnauthorizedHandler(() => {});
     };
   }, [signedOut]);
 
@@ -31,14 +32,21 @@ export function AuthProvider({ children }) {
     setState({ status: "authenticated", user });
   }, []);
 
+  /**
+   * Ends the session on the server. The User is only shown as logged out once
+   * the server confirms it (or says there was no session); otherwise the error
+   * is thrown so the screen can say logout failed, rather than hiding a session
+   * that is still alive.
+   */
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
-    } finally {
-      signedOut();
-      // A fresh CSRF cookie for the next login.
-      await api.ensureCsrfToken().catch(() => {});
+    } catch (error) {
+      if (error.status !== 401) throw error;
     }
+    signedOut();
+    // Make sure a CSRF cookie exists before the next login.
+    await api.ensureCsrfToken().catch(() => {});
   }, [signedOut]);
 
   const value = useMemo(() => ({ ...state, login, logout }), [state, login, logout]);

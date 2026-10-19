@@ -1,10 +1,21 @@
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useAuth } from "../auth/AuthContext.jsx";
-import { CalendarIcon, ListIcon, LogoutIcon } from "./Icons.jsx";
+import { AlertIcon, CalendarIcon, ListIcon, LogoutIcon } from "./Icons.jsx";
 
 /** The navy sidebar and light content area every logged-in screen sits in (visual 8). */
 export default function AppShell() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
+  const [logoutError, setLogoutError] = useState(null);
+
+  async function handleLogout() {
+    setLogoutError(null);
+    try {
+      await logout();
+    } catch (error) {
+      setLogoutError(`Logout failed: ${error.message}`);
+    }
+  }
 
   return (
     <div className="shell">
@@ -23,18 +34,22 @@ export default function AppShell() {
           <NavLink to="/my-bookings" className="sidebar__link">
             <CalendarIcon /> My Bookings
           </NavLink>
-          <button type="button" className="sidebar__link" onClick={logout}>
+          <hr className="sidebar__divider" />
+          <button type="button" className="sidebar__link" onClick={handleLogout}>
             <LogoutIcon /> Logout
           </button>
         </nav>
-
-        <div className="sidebar__user" title="Signed in as">
-          {user.username}
-        </div>
       </aside>
 
       <main className="content">
-        <Outlet />
+        <div className="content__panel">
+          {logoutError && (
+            <div className="banner banner--error" role="alert">
+              <AlertIcon /> {logoutError}
+            </div>
+          )}
+          <Outlet />
+        </div>
       </main>
     </div>
   );

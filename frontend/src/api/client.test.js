@@ -194,3 +194,42 @@ describe("reading the CSRF cookie", () => {
     expect(parseCsrfCookie("")).toBeNull();
   });
 });
+
+describe("more pagination safety", () => {
+  it("refuse a same-origin link that leaves /api/", async () => {
+    const { fetch, calls } = fakeFetch([200, { next: "/admin/?page=2", results: [{ id: 1 }] }]);
+    const api = createApiClient({ fetch, getCsrfToken: () => null, origin: "http://localhost:5173" });
+
+    expect(await api.listAll("/api/rooms/").catch((e) => e)).toBeInstanceOf(ApiError);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("stop at the page cap even when every link is new", async () => {
+    const page = (n) => [200, { next: `/api/rooms/?page=${n + 1}`, results: [{ id: n }] }];
+    const { fetch, calls } = fakeFetch(page(1), page(2), page(3));
+    const api = createApiClient({
+      fetch,
+      getCsrfToken: () => null,
+      origin: "http://localhost:5173",
+      maxPages: 2,
+    });
+
+    expect(await api.listAll("/api/rooms/?page=1").catch((e) => e)).toBeInstanceOf(ApiError);
+    expect(calls).toHaveLength(2);
+  });
+});
+
+describe("network failures", () => {
+  it("become a readable ApiError instead of the browser's raw message", async () => {
+    const fetch = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    const api = createApiClient({ fetch, getCsrfToken: () => null });
+
+    const error = await api.get("/api/auth/me/").catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(0);
+    expect(error.message).toBe("Can't reach the server. Check your connection and try again.");
+  });
+});

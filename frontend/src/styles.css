@@ -70,16 +70,14 @@ h1 {
   width: 56px;
   height: 56px;
   border-radius: 14px;
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--primary);
+  color: #fff;
 }
 
 .brand-mark--small {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: var(--primary);
-  color: #fff;
 }
 
 /* ---- Buttons and inputs -------------------------------------------------- */
@@ -291,26 +289,37 @@ h1 {
 }
 
 .sidebar__link.active {
-  background: var(--navy-700);
+  background: var(--primary);
   color: #fff;
 }
 
-.sidebar__user {
-  margin-top: auto;
-  padding: 10px 12px;
-  border-top: 1px solid var(--navy-800);
-  font-size: 0.85rem;
+.sidebar__divider {
+  width: 100%;
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--navy-700);
 }
 
 .content {
   min-width: 0;
-  padding: 32px 36px;
+  padding: 16px;
+}
+
+.content__panel {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-height: 100%;
+  padding: 28px 32px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
 }
 
 .page-header {
   display: grid;
   gap: 4px;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
 }
 
 .page-header p {
