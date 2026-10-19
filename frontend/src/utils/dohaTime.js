@@ -63,6 +63,16 @@ export function toDohaIso(date, time) {
   return `${date}T${time}:00${formatOffset(offset)}`;
 }
 
+/** True for a real calendar date written exactly as "YYYY-MM-DD". */
+export function isDohaDate(value) {
+  try {
+    parseDate(value ?? "");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** The instants where a Doha calendar Day starts and ends (exclusive). */
 export function dohaDayBounds(date) {
   return {

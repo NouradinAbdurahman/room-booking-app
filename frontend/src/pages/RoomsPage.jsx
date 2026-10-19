@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../api/index.js";
-import { AlertIcon, ChevronRightIcon, UsersIcon } from "../components/Icons.jsx";
+import { AlertIcon, ChevronRightIcon } from "../components/Icons.jsx";
 import PageHeader from "../components/PageHeader.jsx";
+import RoomSummary from "../components/RoomSummary.jsx";
 
 /** Every Room as a card linking to its schedule (visual 8, panel 2). */
 export default function RoomsPage() {
@@ -37,15 +38,7 @@ export default function RoomsPage() {
           {rooms.map((room) => (
             <li key={room.id}>
               <Link to={`/rooms/${room.id}`} className="room-card">
-                <span className="room-card__icon">
-                  <UsersIcon />
-                </span>
-                <span className="room-card__text">
-                  <strong>{room.name}</strong>
-                  <span className="muted">
-                    Capacity: {room.capacity} {room.capacity === 1 ? "person" : "people"}
-                  </span>
-                </span>
+                <RoomSummary room={room} />
                 <ChevronRightIcon className="room-card__chevron" />
               </Link>
             </li>

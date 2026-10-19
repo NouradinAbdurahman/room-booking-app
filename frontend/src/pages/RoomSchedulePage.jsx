@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { api } from "../api/index.js";
 import DateStepper from "../components/DateStepper.jsx";
-import { AlertIcon, ArrowLeftIcon, PlusIcon, UsersIcon } from "../components/Icons.jsx";
-import { daySchedule, dohaDayBounds, formatDohaTime, todayInDoha } from "../utils/dohaTime.js";
+import { AlertIcon, ArrowLeftIcon, PlusIcon } from "../components/Icons.jsx";
+import RoomSummary from "../components/RoomSummary.jsx";
+import { daySchedule, formatDohaTime, isDohaDate, todayInDoha } from "../utils/dohaTime.js";
 
 const BOOKING_COLOURS = ["blue", "green", "purple"];
 
@@ -11,24 +12,31 @@ const BOOKING_COLOURS = ["blue", "green", "purple"];
 export default function RoomSchedulePage() {
   const { roomId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const date = validDate(searchParams.get("date")) ?? todayInDoha();
+  const requestedDate = searchParams.get("date");
+  const date = isDohaDate(requestedDate) ? requestedDate : todayInDoha();
+
+  // The selected Day always lives in the URL: a missing or invalid ?date=
+  // is replaced with today, without adding a history entry.
+  useEffect(() => {
+    if (requestedDate !== date) setSearchParams({ date }, { replace: true });
+  }, [requestedDate, date, setSearchParams]);
 
   const [room, setRoom] = useState(null);
-  // The Day schedule together with the date it was fetched for, so a stale
-  // list is never drawn against a newly chosen date.
+  // Each result remembers the request it answers, so a response for another
+  // Room or Day is never drawn, and a past error never lingers.
   const [schedule, setSchedule] = useState(null);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     let ignore = false; // set on unmount so a late response is dropped
+    setRoom(null);
     api
       .listAll("/api/rooms/")
       .then((rooms) => {
         if (ignore) return;
         const found = rooms.find((r) => String(r.id) === roomId);
-        found ? setRoom(found) : setError("This room does not exist.");
+        setRoom(found ? { roomId, room: found } : { roomId, error: "This room does not exist." });
       })
-      .catch((err) => !ignore && setError(err.message));
+      .catch((err) => !ignore && setRoom({ roomId, error: err.message }));
     return () => {
       ignore = true;
     };
@@ -39,12 +47,18 @@ export default function RoomSchedulePage() {
     const query = new URLSearchParams({ room: roomId, date });
     api
       .listAll(`/api/bookings/?${query}`)
-      .then((bookings) => !ignore && setSchedule({ date, bookings }))
-      .catch((err) => !ignore && setError(err.message));
+      .then((bookings) => !ignore && setSchedule({ roomId, date, bookings }))
+      .catch((err) => !ignore && setSchedule({ roomId, date, error: err.message }));
     return () => {
       ignore = true;
     };
   }, [roomId, date]);
+
+  const current = (result) => result?.roomId === roomId && (result.date ?? date) === date;
+  const roomResult = current(room) ? room : null;
+  const scheduleResult = current(schedule) ? schedule : null;
+  // An unknown Room fails both requests; show only the Room's message.
+  const error = roomResult?.error ?? scheduleResult?.error;
 
   return (
     <div className="schedule">
@@ -52,43 +66,36 @@ export default function RoomSchedulePage() {
         <ArrowLeftIcon width={16} height={16} /> Back to Rooms
       </Link>
 
-      {room && (
+      {roomResult?.room && (
         <header className="schedule__header">
-          <span className="room-card__icon">
-            <UsersIcon />
-          </span>
-          <span className="room-card__text">
-            <h1>{room.name}</h1>
-            <span className="muted">
-              Capacity: {room.capacity} {room.capacity === 1 ? "person" : "people"}
-            </span>
-          </span>
+          <RoomSummary room={roomResult.room} heading />
         </header>
       )}
 
-      <DateStepper date={date} onChange={(next) => setSearchParams({ date: next })} />
-
-      {error && (
+      {error ? (
         <div className="banner banner--error" role="alert">
           <AlertIcon /> {error}
         </div>
-      )}
-      {schedule?.date === date ? (
-        <Timeline items={daySchedule(schedule.bookings, date)} />
       ) : (
-        !error && <p className="muted">Loading schedule…</p>
+        <>
+          <DateStepper date={date} onChange={(next) => setSearchParams({ date: next })} />
+          {scheduleResult?.bookings ? (
+            <Timeline items={daySchedule(scheduleResult.bookings, date)} />
+          ) : (
+            <p className="muted">Loading schedule…</p>
+          )}
+          {/* Booking a Room arrives in ticket 08. */}
+          <button type="button" className="button button--primary button--block" disabled>
+            <PlusIcon /> Book This Room
+          </button>
+        </>
       )}
-
-      {/* Booking a Room arrives in ticket 08. */}
-      <button type="button" className="button button--primary button--block" disabled>
-        <PlusIcon /> Book This Room
-      </button>
     </div>
   );
 }
 
 function Timeline({ items }) {
-  let bookingIndex = 0;
+  const bookings = items.filter((item) => item.kind === "booking");
   return (
     <ol className="timeline">
       {items.map((item) => (
@@ -100,9 +107,9 @@ function Timeline({ items }) {
             {formatDohaTime(item.start)}
           </time>
           {item.kind === "available" ? (
-            <div className="slot slot--available">Available</div>
+            <div className="timeline__block timeline__block--available">Available</div>
           ) : (
-            <BookingBlock item={item} colour={BOOKING_COLOURS[bookingIndex++ % BOOKING_COLOURS.length]} />
+            <BookingBlock item={item} colour={BOOKING_COLOURS[bookings.indexOf(item) % BOOKING_COLOURS.length]} />
           )}
         </li>
       ))}
@@ -113,25 +120,14 @@ function Timeline({ items }) {
 function BookingBlock({ item, colour }) {
   const { booking, startsBeforeDay, endsAfterDay } = item;
   return (
-    <div className={`slot slot--booking slot--${colour}`}>
+    <div className={`timeline__block timeline__block--booking timeline__block--${colour}`}>
       <strong>{booking.title}</strong>
       <span>
         {formatDohaTime(booking.start_time)} – {formatDohaTime(booking.end_time)}
         {startsBeforeDay && <em> (from the previous day)</em>}
         {endsAfterDay && <em> (until the next day)</em>}
       </span>
-      <span className="slot__booker">{booking.booked_by.username}</span>
+      <span className="timeline__booker">{booking.booked_by.username}</span>
     </div>
   );
-}
-
-/** The ?date= value if it is a real "YYYY-MM-DD" date, otherwise null. */
-function validDate(value) {
-  if (!value) return null;
-  try {
-    dohaDayBounds(value);
-    return value;
-  } catch {
-    return null;
-  }
 }

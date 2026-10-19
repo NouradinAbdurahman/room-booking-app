@@ -7,6 +7,7 @@ import {
   durationMinutes,
   formatDohaDate,
   formatDohaTime,
+  isDohaDate,
   todayInDoha,
   toDohaIso,
 } from "./dohaTime.js";
@@ -199,5 +200,16 @@ describe("laying out a Day's schedule with Available gaps", () => {
     ]);
     expect([items[0].startsBeforeDay, items[0].endsAfterDay]).toEqual([true, false]);
     expect([items[2].startsBeforeDay, items[2].endsAfterDay]).toEqual([false, true]);
+  });
+});
+
+describe("recognising a Doha calendar date", () => {
+  it("accepts a real YYYY-MM-DD date", () => {
+    expect(isDohaDate("2026-10-20")).toBe(true);
+    expect(isDohaDate("2028-02-29")).toBe(true);
+  });
+
+  it.each([null, "", "2026-02-30", "2026-1-5", "20-10-2026", "garbage"])("rejects %s", (value) => {
+    expect(isDohaDate(value)).toBe(false);
   });
 });

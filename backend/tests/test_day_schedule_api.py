@@ -1,6 +1,6 @@
 """Seam 1: GET /api/bookings/?room=<id>&date=YYYY-MM-DD, a Room's Doha Day schedule."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -78,6 +78,7 @@ def test_booking_is_returned_in_the_agreed_shape_in_doha_time(logged_in, book, r
     assert body["count"] == 1
     assert body["next"] is None and body["previous"] is None
     result = body["results"][0]
+    created_at = result.pop("created_at")
     assert result == {
         "id": booking.id,
         "room": {"id": room.id, "name": "Conference Room A", "capacity": 10},
@@ -85,9 +86,8 @@ def test_booking_is_returned_in_the_agreed_shape_in_doha_time(logged_in, book, r
         "start_time": "2026-10-20T09:00:00+03:00",
         "end_time": "2026-10-20T10:00:00+03:00",
         "booked_by": {"id": user.id, "username": "alice"},
-        "created_at": result["created_at"],
     }
-    assert result["created_at"].endswith("+03:00")
+    assert created_at.endswith("+03:00")
 
 
 def test_booking_crossing_midnight_appears_on_both_days(logged_in, book, room):
@@ -152,8 +152,8 @@ def test_query_count_does_not_grow_with_the_number_of_bookings(logged_in, room):
                 room=room,
                 user=booker,
                 title=f"Meeting {n}",
-                start_time=doha(day, 0) + n * (doha(20, 0, 15) - doha(20, 0)),
-                end_time=doha(day, 0) + (n + 1) * (doha(20, 0, 15) - doha(20, 0)),
+                start_time=doha(day, 0) + n * timedelta(minutes=15),
+                end_time=doha(day, 0) + (n + 1) * timedelta(minutes=15),
             )
         with CaptureQueriesContext(connection) as ctx:
             response = day_schedule(logged_in, room, f"2026-10-{day}")
@@ -164,23 +164,25 @@ def test_query_count_does_not_grow_with_the_number_of_bookings(logged_in, room):
 
 
 @pytest.mark.parametrize(
-    "params",
+    ("params", "fields_with_errors"),
     [
-        {},
-        {"room": "ROOM"},
-        {"date": DAY},
-        {"room": "ROOM", "date": "20-10-2026"},
-        {"room": "ROOM", "date": "2026-02-30"},
-        {"room": "not-a-number", "date": DAY},
-        {"room": "999999", "date": DAY},
-        {"mine": "true"},
-        {"mine": "true", "room": "ROOM", "date": DAY},
+        ({}, {"room", "date"}),
+        ({"room": "ROOM"}, {"date"}),
+        ({"date": DAY}, {"room"}),
+        ({"room": "ROOM", "date": "20-10-2026"}, {"date"}),
+        ({"room": "ROOM", "date": "2026-1-5"}, {"date"}),
+        ({"room": "ROOM", "date": "2026-02-30"}, {"date"}),
+        ({"room": "not-a-number", "date": DAY}, {"room"}),
+        ({"room": "999999", "date": DAY}, {"room"}),
+        ({"mine": "true"}, {"mine"}),
+        ({"mine": "true", "room": "ROOM", "date": DAY}, {"mine"}),
     ],
     ids=[
         "no-filter",
         "room-only",
         "date-only",
         "bad-date-format",
+        "date-without-leading-zeros",
         "impossible-date",
         "non-numeric-room",
         "unknown-room",
@@ -188,7 +190,7 @@ def test_query_count_does_not_grow_with_the_number_of_bookings(logged_in, room):
         "mixed-forms",
     ],
 )
-def test_bad_filters_are_a_validation_error(logged_in, room, params):
+def test_bad_filters_are_a_validation_error_naming_the_field(logged_in, room, params, fields_with_errors):
     params = {k: (str(room.id) if v == "ROOM" else v) for k, v in params.items()}
 
     response = logged_in.get("/api/bookings/", params)
@@ -196,4 +198,11 @@ def test_bad_filters_are_a_validation_error(logged_in, room, params):
     assert response.status_code == 400
     error = response.json()["error"]
     assert error["code"] == "validation_error"
-    assert error["message"]
+    assert set(error["fields"]) == fields_with_errors
+    assert all(messages for messages in error["fields"].values())
+
+
+def test_unknown_room_says_so(logged_in):
+    response = logged_in.get("/api/bookings/", {"room": "999999", "date": DAY})
+
+    assert response.json()["error"]["fields"] == {"room": ["No Room has this id."]}

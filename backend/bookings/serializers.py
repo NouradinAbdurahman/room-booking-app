@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -6,6 +8,8 @@ from rooms.serializers import RoomSerializer
 
 from .models import Booking
 
+STRICT_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+DATE_INVALID = "Date must be a real date written as YYYY-MM-DD."
 DAY_FILTER_REQUIRED = "Required, together with {other}, to show a Room's Day schedule."
 
 
@@ -26,7 +30,7 @@ class BookingSerializer(serializers.ModelSerializer):
 
 
 class BookingListFilter(serializers.Serializer):
-    """The query of GET /api/bookings/: a Room and a Doha date (ADR 0006).
+    """The query of GET /api/bookings/: a Room and a Doha Day, given as `date` (ADR 0006).
 
     `mine=true` is the other filter form; it arrives with My Bookings (ticket 11).
     """
@@ -42,8 +46,14 @@ class BookingListFilter(serializers.Serializer):
     date = serializers.DateField(
         input_formats=["%Y-%m-%d"],
         required=False,
-        error_messages={"invalid": "Date must be a real date written as YYYY-MM-DD."},
+        error_messages={"invalid": DATE_INVALID},
     )
+
+    def validate_date(self, value):
+        # strptime also accepts "2026-1-5"; the API takes exactly YYYY-MM-DD.
+        if not STRICT_DATE.match(self.initial_data.get("date", "")):
+            raise serializers.ValidationError(DATE_INVALID)
+        return value
 
     def validate(self, attrs):
         if "mine" in self.initial_data:
