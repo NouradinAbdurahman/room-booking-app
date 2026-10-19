@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { api } from "../api/index.js";
+import CreateBookingDialog from "../components/CreateBookingDialog.jsx";
 import DateStepper from "../components/DateStepper.jsx";
-import { AlertIcon, ArrowLeftIcon, PlusIcon } from "../components/Icons.jsx";
+import { AlertIcon, ArrowLeftIcon, CheckIcon, PlusIcon } from "../components/Icons.jsx";
 import RoomSummary from "../components/RoomSummary.jsx";
 import { daySchedule, formatDohaTime, isDohaDate, todayInDoha } from "../utils/dohaTime.js";
 
@@ -25,6 +26,9 @@ export default function RoomSchedulePage() {
   // Each result remembers the request it answers, so a response for another
   // Room or Day is never drawn, and a past error never lingers.
   const [schedule, setSchedule] = useState(null);
+  const [reloads, setReloads] = useState(0);
+  const [booking, setBooking] = useState(false);
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
     let ignore = false; // set on unmount so a late response is dropped
@@ -52,7 +56,23 @@ export default function RoomSchedulePage() {
     return () => {
       ignore = true;
     };
-  }, [roomId, date]);
+  }, [roomId, date, reloads]);
+
+  const closeDialog = useCallback(() => setBooking(false), []);
+
+  function handleCreated(created) {
+    setBooking(false);
+    setNotice("Booking created successfully!");
+    // Show the Day the new Booking starts on, and refresh it.
+    const startDate = todayInDoha(new Date(created.start_time));
+    if (startDate !== date) setSearchParams({ date: startDate });
+    setReloads((n) => n + 1);
+  }
+
+  function changeDate(next) {
+    setNotice(null);
+    setSearchParams({ date: next });
+  }
 
   const current = (result) => result?.roomId === roomId && (result.date ?? date) === date;
   const roomResult = current(room) ? room : null;
@@ -78,17 +98,32 @@ export default function RoomSchedulePage() {
         </div>
       ) : (
         <>
-          <DateStepper date={date} onChange={(next) => setSearchParams({ date: next })} />
+          <DateStepper date={date} onChange={changeDate} />
+          {notice && (
+            <div className="banner banner--success" role="status">
+              <CheckIcon /> {notice}
+            </div>
+          )}
           {scheduleResult?.bookings ? (
             <Timeline items={daySchedule(scheduleResult.bookings, date)} />
           ) : (
             <p className="muted">Loading schedule…</p>
           )}
-          {/* Booking a Room arrives in ticket 08. */}
-          <button type="button" className="button button--primary button--block" disabled>
+          <button
+            type="button"
+            className="button button--primary button--block"
+            disabled={!roomResult?.room}
+            onClick={() => {
+              setNotice(null);
+              setBooking(true);
+            }}
+          >
             <PlusIcon /> Book This Room
           </button>
         </>
+      )}
+      {booking && roomResult?.room && (
+        <CreateBookingDialog room={roomResult.room} date={date} onClose={closeDialog} onCreated={handleCreated} />
       )}
     </div>
   );
