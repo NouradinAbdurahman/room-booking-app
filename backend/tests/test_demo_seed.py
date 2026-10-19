@@ -37,3 +37,18 @@ def test_seeding_without_a_demo_password_fails_loudly(settings):
 
     with pytest.raises(CommandError, match="DEMO_USER_PASSWORD"):
         call_command("seed_demo")
+
+
+def test_seed_creates_the_three_demo_rooms_once(api_client):
+    call_command("seed_demo")
+    call_command("seed_demo")
+    login(api_client, csrf_token(api_client), "user1", DEMO_PASSWORD)
+
+    rooms = api_client.get("/api/rooms/").json()
+
+    assert rooms["count"] == 3
+    assert [(r["name"], r["capacity"]) for r in rooms["results"]] == [
+        ("Conference Room A", 10),
+        ("Focus Room", 4),
+        ("Meeting Room B", 6),
+    ]
