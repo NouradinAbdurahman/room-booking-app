@@ -1,12 +1,15 @@
-from rest_framework.generics import ListAPIView
+from rest_framework import status
+from rest_framework.generics import ListCreateAPIView
+from rest_framework.response import Response
 
+from . import services
 from .doha_time import doha_day_bounds
 from .models import Booking, BookingStatus
-from .serializers import BookingListFilter, BookingSerializer
+from .serializers import BookingListFilter, BookingSerializer, CreateBookingSerializer
 
 
-class BookingListView(ListAPIView):
-    """A Room's Day schedule: every Active booking overlapping one Doha Day (ADRs 0005, 0006)."""
+class BookingListView(ListCreateAPIView):
+    """GET: a Room's Day schedule (ADRs 0005, 0006). POST: book a Room (spec §5)."""
 
     serializer_class = BookingSerializer
 
@@ -26,3 +29,19 @@ class BookingListView(ListAPIView):
             .select_related("room", "user")
             .order_by("start_time", "id")
         )
+
+    def create(self, request, *args, **kwargs):
+        shape = CreateBookingSerializer(data=request.data)
+        shape.is_valid(raise_exception=True)
+        # The Booker is always the session User, never a request field.
+        booking = services.create_booking(booker=request.user, **_rule_inputs(shape.validated_data))
+        return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+
+
+def _rule_inputs(data):
+    return {
+        "room_id": data["room_id"],
+        "title": data["title"],
+        "start": data["start_time"],
+        "end": data["end_time"],
+    }

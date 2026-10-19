@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
 
 from rooms.models import Room
@@ -64,3 +65,39 @@ class BookingListFilter(serializers.Serializer):
         if missing:
             raise serializers.ValidationError(missing)
         return attrs
+
+
+class OffsetDateTimeField(serializers.Field):
+    """An ISO-8601 time that carries a UTC offset and is a whole minute (ADR 0005).
+
+    DRF's own DateTimeField would quietly read a time without an offset as
+    server-local time; here "10:00" alone is refused as ambiguous.
+    """
+
+    default_error_messages = {
+        "invalid": "Use an ISO-8601 time such as 2026-10-20T10:00:00+03:00.",
+        "no_offset": "Include a UTC offset, for example +03:00.",
+        "not_whole_minute": "Use whole minutes; seconds must be zero.",
+    }
+
+    def to_internal_value(self, data):
+        try:
+            value = parse_datetime(data) if isinstance(data, str) else None
+        except ValueError:  # well-formed but impossible, e.g. month 13
+            value = None
+        if value is None:
+            self.fail("invalid")
+        if value.tzinfo is None:
+            self.fail("no_offset")
+        if value.second or value.microsecond:
+            self.fail("not_whole_minute")
+        return value
+
+
+class CreateBookingSerializer(serializers.Serializer):
+    """Step 1 of spec §5: only the request's shape. The rules live in bookings.services."""
+
+    room_id = serializers.IntegerField(error_messages={"invalid": "Room must be a Room id."})
+    title = serializers.CharField(max_length=200)
+    start_time = OffsetDateTimeField()
+    end_time = OffsetDateTimeField()
