@@ -27,6 +27,7 @@ class Command(BaseCommand):
             user.save(update_fields=["password"])
             self.stdout.write(f"{'Created' if created else 'Updated'} demo user {username}")
 
+        # Only adds missing rooms; an existing room is left exactly as it is.
         for name, capacity in DEMO_ROOMS:
-            _, created = Room.objects.update_or_create(name=name, defaults={"capacity": capacity})
-            self.stdout.write(f"{'Created' if created else 'Kept'} demo room {name} ({capacity})")
+            room, created = Room.objects.get_or_create(name=name, defaults={"capacity": capacity})
+            self.stdout.write(f"{'Created' if created else 'Exists'} demo room {name} ({room.capacity})")

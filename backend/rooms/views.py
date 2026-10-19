@@ -5,5 +5,5 @@ from .serializers import RoomSerializer
 
 
 class RoomListView(ListAPIView):
-    queryset = Room.objects.order_by("name")
+    queryset = Room.objects.all()  # ordered by name (Room.Meta.ordering)
     serializer_class = RoomSerializer

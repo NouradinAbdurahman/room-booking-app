@@ -10,18 +10,18 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     setUnauthorizedHandler(signedOut);
-    let cancelled = false;
+    let ignore = false; // set on unmount so a late response is dropped
     (async () => {
       try {
         await api.ensureCsrfToken();
         const user = await authApi.me();
-        if (!cancelled) setState({ status: "authenticated", user });
+        if (!ignore) setState({ status: "authenticated", user });
       } catch {
-        if (!cancelled) signedOut();
+        if (!ignore) signedOut();
       }
     })();
     return () => {
-      cancelled = true;
+      ignore = true;
       setUnauthorizedHandler(() => {});
     };
   }, [signedOut]);

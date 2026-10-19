@@ -10,13 +10,13 @@ export default function RoomsPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let ignore = false; // set on unmount so a late response is dropped
     api
       .listAll("/api/rooms/")
-      .then((list) => !cancelled && setRooms(list))
-      .catch((err) => !cancelled && setError(err.message));
+      .then((list) => !ignore && setRooms(list))
+      .catch((err) => !ignore && setError(err.message));
     return () => {
-      cancelled = true;
+      ignore = true;
     };
   }, []);
 
@@ -42,7 +42,9 @@ export default function RoomsPage() {
                 </span>
                 <span className="room-card__text">
                   <strong>{room.name}</strong>
-                  <span className="muted">Capacity: {room.capacity} people</span>
+                  <span className="muted">
+                    Capacity: {room.capacity} {room.capacity === 1 ? "person" : "people"}
+                  </span>
                 </span>
                 <ChevronRightIcon className="room-card__chevron" />
               </Link>
