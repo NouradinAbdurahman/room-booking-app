@@ -28,5 +28,5 @@ Checked on 2026-10-19 against commit range `58a37ad..HEAD`. Each item says how i
 
 - With `DEBUG=True` (local development), Django shows its own technical pages for 400/403/500 instead of the envelope, as Django intends. Production runs with `DEBUG` off.
 - Unknown extra query parameters are ignored, not refused. A stricter rule needs the user's approval.
-- Creating Bookings has no per-User rate limit; only login is throttled (spec §3). Raised by the security review; needs the user's approval because it is a new rule.
+- Creating Bookings has no per-User rate limit; only login is throttled (spec §3). **Decided by the user: out of scope for this assignment; recorded as a future improvement in the README.** The security review's reason: a logged-in User could script rapid booking attempts against the exclusion constraint, costing CPU (including up to `INSERT_ATTEMPTS` deadlock retries each). A scoped DRF throttle on booking creation would cap that.
 - The login throttle trusts one proxy hop (`NUM_PROXIES=1`); direct calls to port `8000` could forge `X-Forwarded-For` (ADR 0004, accepted trade-off).

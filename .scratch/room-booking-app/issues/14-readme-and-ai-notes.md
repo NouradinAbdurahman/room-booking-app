@@ -19,7 +19,7 @@
   - The CSRF-through-proxy check, from ticket 04.
   - The three brief/ADR differences flagged in the spec, and the assumptions it lists.
   - That `DEBUG=False` requires HTTPS (ADR 0004), and why HSTS preload and the proxy SSL header are off.
-  - What I'd improve with more time.
+  - What I'd improve with more time, including a per-User rate limit on creating Bookings (deliberately out of scope; see `evidence/12-security-checklist.md` for the security review's reason).
 - [ ] **`AI_NOTES.md`:**
   - the tools used and for which parts;
   - at least two real places where AI was wrong or weak and what was done about each. Candidates from the design phase: the unproven "max 96 per Day" claim; the extra "no cancelling after start" rule; the inconsistent response and error shapes in the API visual. Add any found during implementation.
