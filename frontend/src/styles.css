@@ -724,3 +724,72 @@ fieldset.field legend {
   text-align: right;
   white-space: nowrap;
 }
+
+/* ---- Narrow screens: the sidebar becomes a top bar (visual 8, panel 7, kept basic) ---- */
+
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    overflow-x: auto;
+  }
+
+  .sidebar__brand {
+    flex: none;
+    padding: 0;
+  }
+
+  .sidebar__nav {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .sidebar__link {
+    width: auto;
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
+
+  .sidebar__divider {
+    display: none;
+  }
+
+  .content {
+    padding: 8px;
+  }
+
+  .content__panel {
+    padding: 18px 14px;
+  }
+
+  .schedule,
+  .room-list {
+    max-width: none;
+  }
+
+  .field__pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .sidebar__brand span:not(.brand-mark),
+  .sidebar__brand {
+    font-size: 0;
+  }
+
+  .sidebar__link {
+    font-size: 0.85rem;
+  }
+}
