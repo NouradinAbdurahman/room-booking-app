@@ -2,7 +2,7 @@ Status: ready-for-agent
 
 # Spec: Room Booking App
 
-Sources of truth: `GLOSSARY.md`, `docs/adr/0001`–`0007`, `docs/design/README.md` with the eight visuals, and the brief at `docs/brief/Room-Booking-Take-Home-Test.pdf`. Where this spec and an ADR disagree, the ADR wins and this spec is wrong. Vocabulary follows the glossary: User, Booker, Room, Booking, Slot, Active booking, Cancelled booking, Upcoming booking, Cancel, Double-booking, Conflict, Refusal, Doha time, Day.
+Sources of truth: `GLOSSARY.md`, `docs/adr/0001`–`0007`, `docs/design/README.md` with the eight visuals, and the original assignment brief (not included in the public repository). Where this spec and an ADR disagree, the ADR wins and this spec is wrong. Vocabulary follows the glossary: User, Booker, Room, Booking, Slot, Active booking, Cancelled booking, Upcoming booking, Cancel, Double-booking, Conflict, Refusal, Doha time, Day.
 
 ## Problem Statement
 

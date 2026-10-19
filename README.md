@@ -379,7 +379,6 @@ Where the brief was open, these choices were made and recorded:
 | [`GLOSSARY.md`](GLOSSARY.md) | The domain vocabulary |
 | [`docs/adr/`](docs/adr/) | Architecture decision records 0001–0007 |
 | [`docs/design/`](docs/design/) | The eight design visuals, and which details the ADRs supersede ([README](docs/design/README.md)) |
-| [`docs/brief/`](docs/brief/) | The original assignment brief |
 | [`.scratch/room-booking-app/`](.scratch/room-booking-app/) | The implementation spec, the 14 tickets, and the evidence (constraint output, security checklist, query plans) |
 | [`AI_NOTES.md`](AI_NOTES.md) | How AI was used, where it was wrong, and what was decided independently |
 
