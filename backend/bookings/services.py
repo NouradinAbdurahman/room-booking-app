@@ -39,7 +39,9 @@ def create_booking(*, booker, room_id, title, start_time, end_time):
     if conflicting:
         raise BookingConflict(_conflict_message(room, conflicting))
 
-    for attempt in range(1, INSERT_ATTEMPTS + 1):  # step 7: the database decides
+    # Step 7: the database decides. Every pass returns or raises; the last
+    # attempt re-raises a deadlock, so the loop never falls through.
+    for attempt in range(1, INSERT_ATTEMPTS + 1):
         try:
             with transaction.atomic():
                 return Booking.objects.create(
@@ -51,7 +53,7 @@ def create_booking(*, booker, room_id, title, start_time, end_time):
             conflicting = _overlapping_booking(room, start_time, end_time)
             raise BookingConflict(_conflict_message(room, conflicting)) from error
         except OperationalError as error:
-            if not _is_deadlock(error) or attempt == INSERT_ATTEMPTS:
+            if not is_deadlock(error) or attempt == INSERT_ATTEMPTS:
                 raise
 
 
@@ -65,7 +67,8 @@ def is_overlap_violation(error):
     )
 
 
-def _is_deadlock(error):
+def is_deadlock(error):
+    """True for PostgreSQL's deadlock (40P01): transient, so safe to retry."""
     return getattr(error.__cause__, "sqlstate", None) == DEADLOCK_DETECTED
 
 

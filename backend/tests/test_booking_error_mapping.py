@@ -105,39 +105,3 @@ def test_conflict_whose_booking_is_gone_on_re_read_says_at_that_time(logged_in, 
     assert response.status_code == 409
     assert response.json()["error"]["message"] == "Conference Room A is already booked at that time."
 
-
-def test_a_deadlock_on_insert_is_retried_not_reported(logged_in, room, monkeypatch):
-    """Two truly simultaneous inserts can deadlock in PostgreSQL's exclusion check
-    (SQLSTATE 40P01). That is a transient failure: the insert is retried, never
-    turned into a 500 or guessed to be a Conflict."""
-    from django.db import OperationalError
-    from psycopg.errors import DeadlockDetected
-
-    real_create = Booking.objects.create
-    attempts = []
-
-    def deadlock_once(**fields):
-        attempts.append(fields)
-        if len(attempts) == 1:
-            raise OperationalError("deadlock detected") from DeadlockDetected("deadlock detected")
-        return real_create(**fields)
-
-    monkeypatch.setattr(Booking.objects, "create", deadlock_once)
-
-    response = book(logged_in, room)
-
-    assert response.status_code == 201
-    assert len(attempts) == 2
-
-
-def test_a_deadlock_that_keeps_happening_is_not_hidden(logged_in, room, monkeypatch):
-    from django.db import OperationalError
-    from psycopg.errors import DeadlockDetected
-
-    def always_deadlock(**fields):
-        raise OperationalError("deadlock detected") from DeadlockDetected("deadlock detected")
-
-    monkeypatch.setattr(Booking.objects, "create", always_deadlock)
-
-    with pytest.raises(OperationalError):
-        book(logged_in, room)

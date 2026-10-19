@@ -7,7 +7,7 @@ as in production. Nothing about the database is mocked.
 """
 
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -17,7 +17,6 @@ from rest_framework.test import APIClient
 
 from bookings import services
 from bookings.models import Booking, BookingStatus
-from rooms.models import Room
 from tests.helpers import PASSWORD, csrf_token, login
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -25,16 +24,12 @@ pytestmark = pytest.mark.django_db(transaction=True)
 DOHA = ZoneInfo("Asia/Qatar")
 FIRST_DAY = datetime(2026, 10, 21, tzinfo=DOHA)
 TIMEOUT = 10  # seconds; a barrier that never fills fails the test instead of hanging
+CONFLICT = {"status": 409, "code": "booking_conflict"}
 
 
 @pytest.fixture(autouse=True)
 def fixed_clock(server_clock):
     server_clock(datetime(2026, 10, 20, 7, tzinfo=DOHA))
-
-
-@pytest.fixture
-def room(transactional_db):
-    return Room.objects.create(name="Conference Room A", capacity=10)
 
 
 @pytest.fixture
@@ -51,9 +46,11 @@ def alice_and_bob(transactional_db):
 
 def release_together(room, requests):
     """Send each (client, start, end) booking request from its own thread, all
-    released at the same instant by a barrier; return the responses in order."""
+    released at the same instant by a barrier; return the responses in order.
+    An exception inside any thread is re-raised here, not swallowed."""
     start_line = threading.Barrier(len(requests), timeout=TIMEOUT)
     responses = [None] * len(requests)
+    failures = [None] * len(requests)
 
     def send(index, client, start, end):
         try:
@@ -62,13 +59,15 @@ def release_together(room, requests):
                 "/api/bookings/",
                 {
                     "room_id": room.id,
-                    "title": f"Meeting {index}",
+                    "title": f"Sync {index}",
                     "start_time": start.isoformat(),
                     "end_time": end.isoformat(),
                 },
                 format="json",
                 HTTP_X_CSRFTOKEN=client.cookies["csrftoken"].value,
             )
+        except BaseException as error:  # noqa: BLE001 - re-raised in the test thread below
+            failures[index] = error
         finally:
             connection.close()  # this thread's own PostgreSQL connection
 
@@ -78,7 +77,15 @@ def release_together(room, requests):
     for thread in threads:
         thread.join(TIMEOUT)
     assert not any(thread.is_alive() for thread in threads), "a request never finished"
+    for failure in failures:
+        if failure is not None:
+            raise failure
     return responses
+
+
+def outcome(response):
+    body = response.json() if response.status_code >= 400 else {}
+    return {"status": response.status_code, "code": body.get("error", {}).get("code")}
 
 
 def active_bookings_on(room, day):
@@ -97,11 +104,15 @@ def test_forced_race_only_postgresql_stops_the_second_booking(room, alice_and_bo
     real_pre_check = services._overlapping_booking
     both_checked = threading.Barrier(2, timeout=TIMEOUT)
     first_pass_results = []
+    record = threading.Lock()
 
     def pre_check_then_wait_for_the_other_request(*args):
         result = real_pre_check(*args)
-        if len(first_pass_results) < 2:  # the two pre-checks, not the later re-read
-            first_pass_results.append(result)
+        with record:
+            is_first_pass = len(first_pass_results) < 2  # not the later re-read
+            if is_first_pass:
+                first_pass_results.append(result)
+        if is_first_pass:
             both_checked.wait()
         return result
 
@@ -123,28 +134,23 @@ def test_forced_race_only_postgresql_stops_the_second_booking(room, alice_and_bo
 
 
 @pytest.mark.parametrize(
-    "second_slot",
-    [(10, 0, 11, 0), (10, 30, 11, 30)],
+    "bobs_slot",
+    [(time(10, 0), time(11, 0)), (time(10, 30), time(11, 30))],
     ids=["identical-slots", "partly-overlapping-slots"],
 )
-def test_natural_race_repeated_always_leaves_exactly_one_booking(room, alice_and_bob, second_slot):
-    """No hooks: release both requests at once, 20 times, each round on a fresh Day."""
+def test_natural_race_repeated_always_leaves_exactly_one_booking(room, alice_and_bob, bobs_slot):
+    """No hooks: Alice books 10:00-11:00 while Bob books bobs_slot at the same
+    instant, 20 times, each round on a fresh Day."""
     alice, bob = alice_and_bob
-    start_hour, start_minute, end_hour, end_minute = second_slot
 
     for round_number in range(20):
         day = FIRST_DAY + timedelta(days=round_number)
+        at = lambda t: day.replace(hour=t.hour, minute=t.minute)  # noqa: E731
         responses = release_together(
             room,
-            [
-                (alice, day.replace(hour=10), day.replace(hour=11)),
-                (
-                    bob,
-                    day.replace(hour=start_hour, minute=start_minute),
-                    day.replace(hour=end_hour, minute=end_minute),
-                ),
-            ],
+            [(alice, at(time(10, 0)), at(time(11, 0))), (bob, at(bobs_slot[0]), at(bobs_slot[1]))],
         )
 
-        assert sorted(r.status_code for r in responses) == [201, 409], f"round {round_number}"
+        outcomes = sorted((outcome(r) for r in responses), key=lambda o: o["status"])
+        assert outcomes == [{"status": 201, "code": None}, CONFLICT], f"round {round_number}"
         assert active_bookings_on(room, day) == 1, f"round {round_number}"
