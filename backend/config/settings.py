@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "rest_framework",
     "accounts",
+    "rooms",
 ]
 
 MIDDLEWARE = [
@@ -110,6 +111,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["accounts.authentication.ApiSessionAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "EXCEPTION_HANDLER": "config.exceptions.exception_handler",
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.StandardPagination",
     "DEFAULT_THROTTLE_RATES": {"login": "5/min"},
     # Exactly one trusted proxy hop: the Vite dev server appends the browser's
     # address to X-Forwarded-For, and DRF keys the login throttle on that last
