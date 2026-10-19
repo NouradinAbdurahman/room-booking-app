@@ -1,5 +1,5 @@
 # Ticket 06: bookings table as PostgreSQL 17 reports it
-# docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c '\d bookings_booking'
+# docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT version();" -c "\d bookings_booking"'
 
                                                           version                                                           
 ----------------------------------------------------------------------------------------------------------------------------
@@ -23,8 +23,6 @@ Indexes:
     "bookings_booking_pkey" PRIMARY KEY, btree (id)
     "booking_room_start_active_idx" btree (room_id, start_time) WHERE status::text = 'active'::text
     "booking_user_start_active_idx" btree (user_id, start_time) WHERE status::text = 'active'::text
-    "bookings_booking_room_id_6f0fa517" btree (room_id)
-    "bookings_booking_user_id_834dfc23" btree (user_id)
     "no_overlapping_active_bookings" EXCLUDE USING gist (room_id WITH =, tstzrange(start_time, end_time, '[)'::text) WITH &&) WHERE (status::text = 'active'::text)
 Check constraints:
     "booking_cancelled_at_matches_status" CHECK (status::text = 'cancelled'::text AND cancelled_at IS NOT NULL OR status::text = 'active'::text AND cancelled_at IS NULL)

@@ -78,7 +78,7 @@ def test_every_kind_of_overlap_is_refused(book, start, end):
     assert refused_by(book, start, end).constraint_name == "no_overlapping_active_bookings"
 
 
-def test_touching_bookings_do_not_clash(book):
+def test_touching_slots_do_not_overlap(book):
     book(doha(10), doha(11))
 
     book(doha(11), doha(12))  # starts exactly when the first ends
@@ -137,9 +137,11 @@ def test_duration_limits_are_inclusive(book, length):
 def test_end_not_after_start_is_refused(book, end_offset):
     diag = refused_by(book, doha(10), doha(10) + end_offset)
 
-    # Such a row breaks both rules; PostgreSQL reports the first failing CHECK
-    # in name order, so either name proves the database refused it.
-    assert diag.constraint_name in {"booking_end_after_start", "booking_duration_15min_to_4h"}
+    # end <= start also breaks the 15-minute minimum, and PostgreSQL reports the
+    # first failing CHECK in name order. booking_end_after_start is implied by
+    # the duration rule, so it can never fire alone; it is proven to exist only
+    # by test_postgresql_has_every_named_check_constraint.
+    assert diag.constraint_name == "booking_duration_15min_to_4h"
 
 
 def test_booking_may_cross_midnight(book):
@@ -159,8 +161,10 @@ def test_blank_title_is_refused(book, title):
 def test_unknown_status_is_refused(book):
     diag = refused_by(book, doha(10), doha(11), status="pending")
 
-    # "pending" also breaks the status/cancelled_at rule, which PostgreSQL checks first by name.
-    assert diag.constraint_name in {"booking_status_valid", "booking_cancelled_at_matches_status"}
+    # "pending" also breaks the status/cancelled_at rule, which PostgreSQL checks
+    # first by name. booking_status_valid is implied by that rule, so it can never
+    # fire alone; it is proven to exist only by the catalog test below.
+    assert diag.constraint_name == "booking_cancelled_at_matches_status"
 
 
 def test_cancelled_without_cancelled_at_is_refused(book):
@@ -192,6 +196,7 @@ def test_postgresql_has_the_active_only_gist_exclusion_constraint():
         cursor.execute("SELECT 1 FROM pg_extension WHERE extname = 'btree_gist'")
         has_btree_gist = cursor.fetchone() is not None
 
+    assert connection.pg_version >= 170000  # PostgreSQL 17, as pinned (ADR 0007)
     assert contype == "x"  # an exclusion constraint
     assert has_btree_gist
     assert definition.startswith("EXCLUDE USING gist (room_id WITH =, tstzrange(start_time, end_time, '[)'::text) WITH &&)")
@@ -225,4 +230,18 @@ def test_postgresql_has_every_named_check_constraint():
             "CHECK (((((status)::text = 'cancelled'::text) AND (cancelled_at IS NOT NULL)) "
             "OR (((status)::text = 'active'::text) AND (cancelled_at IS NULL))))"
         ),
+    }
+
+
+def test_postgresql_has_exactly_the_specified_indexes():
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT indexname FROM pg_indexes WHERE tablename = 'bookings_booking'")
+        indexes = {name for (name,) in cursor.fetchall()}
+
+    # Spec §2: the exclusion constraint's GiST index and two partial btrees; no others.
+    assert indexes == {
+        "bookings_booking_pkey",
+        "no_overlapping_active_bookings",
+        "booking_room_start_active_idx",
+        "booking_user_start_active_idx",
     }
